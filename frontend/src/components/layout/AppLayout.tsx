@@ -169,7 +169,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
           borderBottom: '1px solid rgba(255,255,255,0.1)',
         }}>
           <Text strong style={{ color: '#fff', fontSize: 18 }}>
-            📊 RFP Analyzer
+            ◆ TIVIT Proposals
           </Text>
         </div>
         <Menu

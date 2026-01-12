@@ -194,7 +194,7 @@ const LoginPage: React.FC = () => {
             <span style={{ fontSize: 28, fontWeight: 700, color: 'white' }}>R</span>
           </div>
           <Title level={2} style={{ margin: 0, color: 'white' }}>
-            RFP Analyzer
+            TIVIT Proposals
           </Title>
           <Text style={{ color: 'rgba(255,255,255,0.5)' }}>
             Análisis inteligente de propuestas
