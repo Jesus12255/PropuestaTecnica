@@ -3,7 +3,7 @@
  */
 import React, { useState } from 'react';
 import { Layout, Typography, Button, Space, Input, Select, Spin, Empty } from 'antd';
-import { PlusOutlined, SearchOutlined, ReloadOutlined } from '@ant-design/icons';
+import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { dashboardApi, rfpApi } from '../lib/api';
 import StatsCards from '../components/dashboard/StatsCards';
@@ -92,14 +92,16 @@ const DashboardPage: React.FC = () => {
           gap: 16, 
           marginBottom: 16,
           marginTop: 24,
+          flexWrap: 'wrap',
         }}>
-          <Input
+          <Input.Search
             placeholder="Buscar por cliente o resumen..."
-            prefix={<SearchOutlined />}
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
+            onSearch={(value) => setSearchText(value)}
             style={{ width: 300 }}
             allowClear
+            enterButton
           />
           <Select
             placeholder="Filtrar por estado"
@@ -115,6 +117,11 @@ const DashboardPage: React.FC = () => {
               { value: 'no_go', label: 'NO GO' },
             ]}
           />
+          {(searchText || statusFilter) && (
+            <Button onClick={() => { setSearchText(''); setStatusFilter(undefined); }}>
+              Limpiar filtros
+            </Button>
+          )}
         </div>
 
         {/* RFP Table */}

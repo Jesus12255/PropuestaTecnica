@@ -69,6 +69,16 @@ export const authApi = {
     const { data } = await api.post<AuthToken>('/auth/refresh');
     return data;
   },
+
+  getPreferences: async (): Promise<{ analysis_mode: 'fast' | 'balanced' | 'deep' }> => {
+    const { data } = await api.get<{ analysis_mode: 'fast' | 'balanced' | 'deep' }>('/auth/preferences');
+    return data;
+  },
+
+  updatePreferences: async (prefs: { analysis_mode: 'fast' | 'balanced' | 'deep' }): Promise<{ analysis_mode: 'fast' | 'balanced' | 'deep' }> => {
+    const { data } = await api.put<{ analysis_mode: 'fast' | 'balanced' | 'deep' }>('/auth/preferences', prefs);
+    return data;
+  },
 };
 
 // ============ DASHBOARD ============

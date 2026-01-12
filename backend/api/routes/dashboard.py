@@ -6,14 +6,17 @@ from sqlalchemy import select, func, case
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
+from core.dependencies import get_current_user
 from models.rfp import RFPSubmission, RFPStatus
 from models.schemas import DashboardStats, RFPSummary
+from models.user import User
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
 
 @router.get("/stats", response_model=DashboardStats)
 async def get_dashboard_stats(
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -55,6 +58,7 @@ async def get_dashboard_stats(
 
 @router.get("/recent", response_model=list[RFPSummary])
 async def get_recent_rfps(
+    current_user: User = Depends(get_current_user),
     limit: int = 10,
     db: AsyncSession = Depends(get_db),
 ):
@@ -75,6 +79,7 @@ async def get_recent_rfps(
 
 @router.get("/pending", response_model=list[RFPSummary])
 async def get_pending_rfps(
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -94,6 +99,7 @@ async def get_pending_rfps(
 
 @router.get("/by-category")
 async def get_rfps_by_category(
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -116,6 +122,7 @@ async def get_rfps_by_category(
 
 @router.get("/by-status")
 async def get_rfps_by_status(
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -136,7 +143,9 @@ async def get_rfps_by_status(
 
 
 @router.get("/api-consumption")
-async def get_api_consumption():
+async def get_api_consumption(
+    current_user: User = Depends(get_current_user),
+):
     """
     Obtiene el resumen de consumo de la API de Gemini.
     
@@ -151,7 +160,9 @@ async def get_api_consumption():
 
 
 @router.get("/storage-info")
-async def get_storage_info():
+async def get_storage_info(
+    current_user: User = Depends(get_current_user),
+):
     """
     Obtiene información del estado del almacenamiento.
     

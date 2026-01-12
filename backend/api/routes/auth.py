@@ -18,6 +18,8 @@ from models.schemas.auth_schemas import (
     UserLogin,
     UserResponse,
     Token,
+    UpdatePreferencesRequest,
+    UserPreferences,
 )
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -98,6 +100,39 @@ async def get_me(
     Obtiene la información del usuario actual.
     """
     return UserResponse.model_validate(current_user)
+
+
+@router.get("/preferences", response_model=UserPreferences)
+async def get_preferences(
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Obtiene las preferencias del usuario actual.
+    """
+    if current_user.preferences:
+        return UserPreferences(**current_user.preferences)
+    return UserPreferences(analysis_mode="balanced")
+
+
+@router.put("/preferences", response_model=UserPreferences)
+async def update_preferences(
+    preferences: UpdatePreferencesRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Actualiza las preferencias del usuario.
+    
+    Modos de análisis disponibles:
+    - fast: Análisis rápido (~15s)
+    - balanced: Análisis completo (~30s) - Recomendado
+    - deep: Análisis exhaustivo (~60s)
+    """
+    current_user.preferences = {"analysis_mode": preferences.analysis_mode}
+    await db.commit()
+    await db.refresh(current_user)
+    
+    return UserPreferences(**current_user.preferences)
 
 
 @router.post("/refresh", response_model=Token)

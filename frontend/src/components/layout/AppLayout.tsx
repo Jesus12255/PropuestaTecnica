@@ -1,13 +1,22 @@
 /**
- * Layout principal de la aplicación
+ * Layout principal de la aplicación con sidebar completa
  */
 import React from 'react';
-import { Layout, Menu, Avatar, Dropdown, Typography, Space } from 'antd';
+import { Layout, Menu, Avatar, Dropdown, Typography, Space, Badge } from 'antd';
 import { 
-  DashboardOutlined, LogoutOutlined, UserOutlined 
+  DashboardOutlined, 
+  LogoutOutlined, 
+  UserOutlined,
+  FileTextOutlined,
+  ClockCircleOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  SettingOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
+import { dashboardApi } from '../../lib/api';
 
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
@@ -20,6 +29,13 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Query para obtener conteo de pendientes
+  const { data: stats } = useQuery({
+    queryKey: ['sidebar-stats'],
+    queryFn: dashboardApi.getStats,
+    refetchInterval: 30000, // Refrescar cada 30s
+  });
 
   const handleLogout = () => {
     logout();
@@ -44,6 +60,18 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     },
   ];
 
+  // Determinar la key seleccionada basado en la ruta
+  const getSelectedKey = () => {
+    const path = location.pathname;
+    if (path === '/') return '/';
+    if (path === '/rfps') return '/rfps';
+    if (path === '/rfps/pending') return '/rfps/pending';
+    if (path === '/rfps/approved') return '/rfps/approved';
+    if (path === '/rfps/rejected') return '/rfps/rejected';
+    if (path === '/settings') return '/settings';
+    return '/';
+  };
+
   const menuItems = [
     {
       key: '/',
@@ -51,13 +79,79 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       label: 'Dashboard',
       onClick: () => navigate('/'),
     },
+    {
+      key: '/rfps',
+      icon: <FileTextOutlined />,
+      label: 'Todos los RFPs',
+      onClick: () => navigate('/rfps'),
+    },
+    {
+      key: '/rfps/pending',
+      icon: <ClockCircleOutlined />,
+      label: (
+        <Space>
+          Pendientes
+          {stats && stats.pending_count + stats.analyzing_count > 0 && (
+            <Badge 
+              count={stats.pending_count + stats.analyzing_count} 
+              size="small"
+              style={{ backgroundColor: '#faad14' }}
+            />
+          )}
+        </Space>
+      ),
+      onClick: () => navigate('/rfps/pending'),
+    },
+    {
+      key: '/rfps/approved',
+      icon: <CheckCircleOutlined />,
+      label: (
+        <Space>
+          Aprobados
+          {stats && stats.go_count > 0 && (
+            <Badge 
+              count={stats.go_count} 
+              size="small"
+              style={{ backgroundColor: '#52c41a' }}
+            />
+          )}
+        </Space>
+      ),
+      onClick: () => navigate('/rfps/approved'),
+    },
+    {
+      key: '/rfps/rejected',
+      icon: <CloseCircleOutlined />,
+      label: (
+        <Space>
+          Rechazados
+          {stats && stats.no_go_count > 0 && (
+            <Badge 
+              count={stats.no_go_count} 
+              size="small"
+              style={{ backgroundColor: '#ff4d4f' }}
+            />
+          )}
+        </Space>
+      ),
+      onClick: () => navigate('/rfps/rejected'),
+    },
+    {
+      type: 'divider' as const,
+    },
+    {
+      key: '/settings',
+      icon: <SettingOutlined />,
+      label: 'Configuración',
+      onClick: () => navigate('/settings'),
+    },
   ];
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Sider
         theme="dark"
-        width={220}
+        width={240}
         style={{
           overflow: 'auto',
           height: '100vh',
@@ -75,19 +169,19 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
           borderBottom: '1px solid rgba(255,255,255,0.1)',
         }}>
           <Text strong style={{ color: '#fff', fontSize: 18 }}>
-            RFP Analyzer
+            📊 RFP Analyzer
           </Text>
         </div>
         <Menu
           theme="dark"
           mode="inline"
-          selectedKeys={[location.pathname]}
+          selectedKeys={[getSelectedKey()]}
           items={menuItems}
           style={{ marginTop: 16 }}
         />
       </Sider>
       
-      <Layout style={{ marginLeft: 220 }}>
+      <Layout style={{ marginLeft: 240 }}>
         <Header style={{ 
           background: '#fff', 
           padding: '0 24px',

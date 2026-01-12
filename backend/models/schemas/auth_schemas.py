@@ -2,6 +2,7 @@
 Schemas para autenticación.
 """
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field, ConfigDict
@@ -24,12 +25,18 @@ class UserLogin(BaseModel):
     password: str
 
 
+class UserPreferences(BaseModel):
+    """Schema for user preferences."""
+    analysis_mode: Literal["fast", "balanced", "deep"] = "balanced"
+
+
 class UserResponse(UserBase):
     """Schema for user response."""
     model_config = ConfigDict(from_attributes=True)
     
     id: UUID
     is_active: bool
+    preferences: UserPreferences | None = None
     created_at: datetime
 
 
@@ -44,3 +51,8 @@ class TokenPayload(BaseModel):
     """Schema for JWT token payload."""
     sub: str  # user_id
     exp: datetime
+
+
+class UpdatePreferencesRequest(BaseModel):
+    """Schema for updating user preferences."""
+    analysis_mode: Literal["fast", "balanced", "deep"]

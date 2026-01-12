@@ -10,6 +10,8 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import RFPDetailPage from './pages/RFPDetailPage';
 import QuestionsPage from './pages/QuestionsPage';
+import RFPListPage from './pages/RFPListPage';
+import SettingsPage from './pages/SettingsPage';
 
 // Componente para rutas protegidas
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -84,6 +86,42 @@ const App: React.FC = () => {
             </ProtectedRoute>
           }
         />
+        
+        {/* Listas de RFPs */}
+        <Route
+          path="/rfps"
+          element={
+            <ProtectedRoute>
+              <RFPListPage filterStatus="all" />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/rfps/pending"
+          element={
+            <ProtectedRoute>
+              <RFPListPage filterStatus="pending" />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/rfps/approved"
+          element={
+            <ProtectedRoute>
+              <RFPListPage filterStatus="approved" />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/rfps/rejected"
+          element={
+            <ProtectedRoute>
+              <RFPListPage filterStatus="rejected" />
+            </ProtectedRoute>
+          }
+        />
+        
+        {/* Detalle RFP */}
         <Route
           path="/rfp/:id"
           element={
@@ -97,6 +135,16 @@ const App: React.FC = () => {
           element={
             <ProtectedRoute>
               <QuestionsPage />
+            </ProtectedRoute>
+          }
+        />
+        
+        {/* Configuración */}
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <SettingsPage />
             </ProtectedRoute>
           }
         />

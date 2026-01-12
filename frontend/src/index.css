@@ -250,6 +250,25 @@ a:hover {
   border-radius: var(--border-radius-sm) !important;
 }
 
+/* Input.Search - quitar borde blanco del grupo */
+.ant-input-search,
+.ant-input-search .ant-input-group,
+.ant-input-search .ant-input-wrapper,
+.ant-input-group-wrapper {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.ant-input-search .ant-input-group-addon {
+  background: var(--bg-tertiary) !important;
+  border-color: var(--border-color) !important;
+}
+
+.ant-input-search .ant-btn {
+  border-color: var(--border-color) !important;
+}
+
 .ant-input::placeholder,
 .ant-input-affix-wrapper .ant-input::placeholder {
   color: var(--text-tertiary) !important;

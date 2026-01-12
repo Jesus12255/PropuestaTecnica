@@ -13,9 +13,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from core.database import get_db
+from core.dependencies import get_current_user
 from core.storage import get_storage_service
 from core.services.analyzer import get_analyzer_service
 from models.rfp import RFPSubmission, RFPQuestion, RFPStatus
+from models.user import User
 from models.schemas import (
     RFPSummary,
     RFPDetail,
@@ -34,6 +36,7 @@ router = APIRouter(prefix="/rfp", tags=["RFP"])
 @router.post("/upload", response_model=UploadResponse)
 async def upload_rfp(
     file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -82,10 +85,19 @@ async def upload_rfp(
     await db.commit()
     await db.refresh(rfp)
     
+    # Obtener modo de análisis de las preferencias del usuario
+    user_prefs = current_user.preferences or {}
+    analysis_mode = user_prefs.get("analysis_mode", "balanced")
+    logger.info(f"Using analysis mode: {analysis_mode} (from user preferences)")
+    
     # Realizar análisis SÍNCRONO
     try:
         analyzer = get_analyzer_service()
-        extracted_data = await analyzer.analyze_rfp_from_content(content, filename)
+        extracted_data = await analyzer.analyze_rfp_from_content(
+            content, 
+            filename,
+            analysis_mode=analysis_mode,
+        )
         
         # Extraer campos indexados
         indexed_fields = analyzer.extract_indexed_fields(extracted_data)
@@ -172,6 +184,7 @@ async def analyze_rfp_task(rfp_id: str, file_uri: str, file_content: bytes):
 @router.get("/{rfp_id}/download")
 async def download_rfp(
     rfp_id: UUID,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -207,6 +220,7 @@ async def download_rfp(
 
 @router.get("", response_model=RFPListResponse)
 async def list_rfps(
+    current_user: User = Depends(get_current_user),
     page: int = 1,
     page_size: int = 20,
     status: str | None = None,
@@ -266,6 +280,7 @@ async def list_rfps(
 @router.get("/{rfp_id}", response_model=RFPDetail)
 async def get_rfp(
     rfp_id: UUID,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -291,6 +306,7 @@ async def make_decision(
     rfp_id: UUID,
     decision: RFPDecision,
     background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -377,6 +393,7 @@ async def generate_questions_task(rfp_id: str, extracted_data: dict):
 @router.get("/{rfp_id}/questions", response_model=list[RFPQuestionSchema])
 async def get_questions(
     rfp_id: UUID,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -395,6 +412,7 @@ async def get_questions(
 @router.post("/{rfp_id}/questions/regenerate", response_model=list[RFPQuestionSchema])
 async def regenerate_questions(
     rfp_id: UUID,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -445,6 +463,7 @@ async def regenerate_questions(
 @router.delete("/{rfp_id}")
 async def delete_rfp(
     rfp_id: UUID,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -475,7 +494,9 @@ async def delete_rfp(
 # ============ STORAGE STATS ============
 
 @router.get("/storage/stats")
-async def get_storage_stats():
+async def get_storage_stats(
+    current_user: User = Depends(get_current_user),
+):
     """
     Obtiene estadísticas del almacenamiento local.
     """

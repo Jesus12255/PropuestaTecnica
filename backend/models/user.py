@@ -6,7 +6,7 @@ from datetime import datetime
 
 from sqlalchemy import String, Boolean, DateTime
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 
 from core.database import Base
 
@@ -28,6 +28,13 @@ class User(Base):
     
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_superuser: Mapped[bool] = mapped_column(Boolean, default=False)
+    
+    # Preferencias del usuario
+    preferences: Mapped[dict | None] = mapped_column(
+        JSONB, 
+        nullable=True,
+        default=lambda: {"analysis_mode": "balanced"}
+    )
     
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), 

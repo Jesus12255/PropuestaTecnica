@@ -5,7 +5,7 @@ Trabaja con archivos locales extrayendo texto primero.
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from pypdf import PdfReader
 from docx import Document
@@ -171,18 +171,25 @@ class RFPAnalyzerService:
             # Asumir texto plano
             return content.decode("utf-8", errors="ignore")
     
-    async def analyze_rfp_from_content(self, content: bytes, filename: str) -> dict[str, Any]:
+    async def analyze_rfp_from_content(
+        self, 
+        content: bytes, 
+        filename: str,
+        analysis_mode: Literal["fast", "balanced", "deep"] = "balanced",
+    ) -> dict[str, Any]:
         """
         Analiza un RFP desde su contenido en bytes.
         
         Args:
             content: Contenido del archivo en bytes
             filename: Nombre del archivo (para determinar tipo)
+            analysis_mode: Modo de análisis (fast/balanced/deep)
             
         Returns:
             Datos extraídos del RFP
         """
         logger.info(f"Starting RFP analysis for: {filename}")
+        logger.info(f"Analysis mode: {analysis_mode}")
         
         # Extraer texto del documento
         document_text = self.extract_text(content, filename)
@@ -197,7 +204,7 @@ class RFPAnalyzerService:
         result = await self.gemini.analyze_document(
             document_content=document_text,
             prompt=self.analysis_prompt,
-            temperature=0.1,
+            analysis_mode=analysis_mode,
         )
         
         logger.info("RFP analysis completed")
