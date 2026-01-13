@@ -44,7 +44,7 @@ cp .env.example .env
 ### 2. Iniciar con Docker Compose
 
 ```bash
-# Iniciar todos los servicios
+# Iniciar todos los servicios (incluyendo MCP)
 docker-compose up --build
 
 # O en background
@@ -52,19 +52,14 @@ docker-compose up --build -d
 
 # Ver logs
 docker-compose logs -f
+
+# Ver logs de un servicio específico
+docker-compose logs -f mcp
 ```
 
-### 3. Iniciar MCP Talent Search (opcional)
+> **Nota:** El servicio MCP requiere los archivos Excel de datos (`Capital_Intelectual.xlsx` y `Census.xlsx`) en la carpeta `mcp/`.
 
-```bash
-cd mcp
-python -m venv venv
-venv\Scripts\activate  # Windows
-pip install -r requirements.txt
-python server.py
-```
-
-### 4. Acceder a la Aplicación
+### 3. Acceder a la Aplicación
 
 | Servicio | URL |
 |----------|-----|
@@ -81,7 +76,7 @@ python server.py
 
 ```
 v2/
-├── docker-compose.yml      # Orquestación Docker
+├── docker-compose.yml      # Orquestación Docker (4 servicios)
 ├── .env.example            # Variables de entorno
 ├── README.md               # Este archivo
 │
@@ -106,8 +101,11 @@ v2/
 │   └── models/             # SQLAlchemy models
 │
 └── mcp/                    # MCP Talent Search API
+    ├── Dockerfile          # Docker production build
     ├── server.py           # Servidor principal
     ├── requirements.txt    # Dependencias Python
+    ├── Capital_Intelectual.xlsx  # Datos de certificaciones
+    ├── Census.xlsx         # Datos de RRHH/Skills
     ├── docs/
     │   └── docs.md         # Documentación técnica completa
     ├── tests/              # Tests de la API
@@ -238,19 +236,25 @@ curl http://localhost:8000/api/v1/dashboard/api-consumption
 ## Comandos Útiles
 
 ```bash
-# Reiniciar solo backend
+# Reiniciar solo un servicio
 docker-compose restart backend
+docker-compose restart mcp
 
 # Ver logs de un servicio específico
 docker-compose logs -f backend
+docker-compose logs -f mcp
 
 # Ejecutar migraciones (si Alembic está configurado)
 docker-compose exec backend alembic upgrade head
 
 # Acceder al contenedor
 docker-compose exec backend bash
+docker-compose exec mcp bash
 
-# Limpiar todo
+# Reconstruir índices vectoriales del MCP
+curl -X POST http://localhost:8083/reindex
+
+# Limpiar todo (incluyendo volúmenes)
 docker-compose down -v
 ```
 

@@ -14,10 +14,35 @@ Sistema de búsqueda semántica de talento para Team Building automatizado en li
 | **Batch Search** | Busca equipos completos para múltiples roles en una llamada |
 | **Deduplicación** | Elimina candidatos duplicados manteniendo el mejor score |
 | **API REST + MCP** | Doble interfaz para máxima flexibilidad |
+| **Dockerizado** | Se integra con docker-compose del proyecto principal |
 
 ---
 
-## Instalación
+## Ejecución con Docker (Recomendado)
+
+El servicio MCP está integrado en el `docker-compose.yml` principal:
+
+```bash
+# Desde la raíz del proyecto (v2/)
+docker-compose up --build
+
+# O solo el servicio MCP
+docker-compose up --build mcp
+```
+
+**Requisitos:**
+- Los archivos Excel deben estar en `mcp/`:
+  - `Capital_Intelectual.xlsx` - Base de certificaciones
+  - `Census.xlsx` - Base de RRHH/Skills
+
+**URLs:**
+- **API:** http://localhost:8083
+- **Swagger UI:** http://localhost:8083/docs
+- **ReDoc:** http://localhost:8083/redoc
+
+---
+
+## Ejecución Local (sin Docker)
 
 ### Requisitos
 - Python 3.10+
@@ -62,24 +87,13 @@ mcp/
 └── server.py
 ```
 
----
-
-## Ejecución
-
-### Modo HTTP (recomendado)
+### Ejecutar
 
 ```bash
+# Modo HTTP (recomendado)
 python server.py
-```
 
-El servidor inicia en `http://localhost:8083`
-
-- **Swagger UI**: http://localhost:8083/docs
-- **ReDoc**: http://localhost:8083/redoc
-
-### Modo MCP (stdio)
-
-```bash
+# Modo MCP (stdio)
 MCP_MODE=mcp python server.py
 ```
 

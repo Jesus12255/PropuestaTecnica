@@ -1,5 +1,5 @@
-# Docker Compose para RFP Analyzer
-# Stack: Frontend (React+Vite) + Backend (FastAPI) + PostgreSQL
+# Docker Compose para TIVIT Proposals
+# Stack: Frontend (React+Vite) + Backend (FastAPI) + MCP Talent Search + PostgreSQL
 
 services:
   # ============================================
@@ -93,6 +93,40 @@ services:
       - rfp_network
 
   # ============================================
+  # MCP Talent Search API
+  # ============================================
+  mcp:
+    build:
+      context: ./mcp
+      dockerfile: Dockerfile
+    container_name: rfp_mcp
+    restart: unless-stopped
+    ports:
+      - "8083:8083"
+    environment:
+      # MCP Configuration
+      MCP_MODE: http
+      MCP_PORT: 8083
+      
+      # Google AI API (for /chat endpoint)
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      GEMINI_MODEL: ${MCP_GEMINI_MODEL:-gemini-2.5-flash-preview-05-20}
+    volumes:
+      # Mount data files (Excel sources)
+      - ./mcp/Capital_Intelectual.xlsx:/app/Capital_Intelectual.xlsx:ro
+      - ./mcp/Census.xlsx:/app/Census.xlsx:ro
+      # Persist LanceDB vector indices
+      - mcp_lancedb:/app/lancedb_data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+    networks:
+      - rfp_network
+
+  # ============================================
   # PgAdmin (opcional para desarrollo)
   # ============================================
   pgadmin:
@@ -117,6 +151,7 @@ volumes:
   postgres_data:
   pgadmin_data:
   rfp_uploads:
+  mcp_lancedb:
 
 networks:
   rfp_network:

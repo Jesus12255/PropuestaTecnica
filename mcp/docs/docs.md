@@ -2,7 +2,8 @@
 
 > **Version:** 3.0.0  
 > **Protocolo:** REST API + MCP (Model Context Protocol)  
-> **Puerto por defecto:** 8083
+> **Puerto por defecto:** 8083  
+> **Docker:** Integrado con docker-compose
 
 ---
 
@@ -10,14 +11,15 @@
 
 1. [Resumen](#resumen)
 2. [Arquitectura](#arquitectura)
-3. [Instalacion](#instalacion)
-4. [Configuracion](#configuracion)
-5. [Endpoints REST](#endpoints-rest)
-6. [Herramientas MCP](#herramientas-mcp)
-7. [Modelos de Datos](#modelos-de-datos)
-8. [Ejemplos de Uso](#ejemplos-de-uso)
-9. [Integracion con Gemini](#integracion-con-gemini)
-10. [Troubleshooting](#troubleshooting)
+3. [Docker](#docker)
+4. [Instalacion Local](#instalacion-local)
+5. [Configuracion](#configuracion)
+6. [Endpoints REST](#endpoints-rest)
+7. [Herramientas MCP](#herramientas-mcp)
+8. [Modelos de Datos](#modelos-de-datos)
+9. [Ejemplos de Uso](#ejemplos-de-uso)
+10. [Integracion con Gemini](#integracion-con-gemini)
+11. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -99,10 +101,71 @@ El **MCP Talent Search** es un sistema de busqueda semantica de talento diseñad
 | Datos | Pandas + openpyxl |
 | LLM | Google Gemini 2.5 Flash |
 | Protocolo MCP | mcp-python |
+| Container | Docker (multi-stage build) |
 
 ---
 
-## Instalacion
+## Docker
+
+El servicio MCP esta integrado en el `docker-compose.yml` principal del proyecto.
+
+### Ejecucion con Docker Compose
+
+```bash
+# Desde la raiz del proyecto (v2/)
+docker-compose up --build
+
+# Solo el servicio MCP
+docker-compose up --build mcp
+
+# Ver logs del MCP
+docker-compose logs -f mcp
+```
+
+### Configuracion Docker
+
+El servicio MCP en `docker-compose.yml`:
+
+```yaml
+mcp:
+  build:
+    context: ./mcp
+    dockerfile: Dockerfile
+  container_name: rfp_mcp
+  ports:
+    - "8083:8083"
+  environment:
+    MCP_MODE: http
+    MCP_PORT: 8083
+    GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+    GEMINI_MODEL: ${MCP_GEMINI_MODEL:-gemini-2.5-flash-preview-05-20}
+  volumes:
+    - ./mcp/Capital_Intelectual.xlsx:/app/Capital_Intelectual.xlsx:ro
+    - ./mcp/Census.xlsx:/app/Census.xlsx:ro
+    - mcp_lancedb:/app/lancedb_data
+```
+
+### Archivos de Datos Requeridos
+
+Los archivos Excel deben estar en la carpeta `mcp/`:
+
+```
+mcp/
+├── Capital_Intelectual.xlsx  # Base de certificaciones
+├── Census.xlsx               # Base de RRHH/Skills
+```
+
+### Health Check
+
+El contenedor incluye health check automatico:
+
+```bash
+curl http://localhost:8083/health
+```
+
+---
+
+## Instalacion Local
 
 ### Requisitos
 
