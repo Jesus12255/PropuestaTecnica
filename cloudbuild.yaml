@@ -23,6 +23,11 @@ steps:
       - 'push'
       - '${_GCP_REGION}-docker.pkg.dev/$PROJECT_ID/${_ARTIFACT_REGISTRY_REPO}/${_BACKEND_SERVICE_NAME}:$COMMIT_SHA'
 
+  - name: '${_GCP_REGION}-docker.pkg.dev/$PROJECT_ID/${_ARTIFACT_REGISTRY_REPO}/${_BACKEND_SERVICE_NAME}:${COMMIT_SHA}'
+    id: 'List files in /app'
+    entrypoint: 'ls'
+    args: ['-l', '/app']
+
   # 3. Run database migrations (Alembic)
   # This step runs the migrations before deploying the new version of the application.
   # It uses the newly built image and connects to the Cloud SQL database.
