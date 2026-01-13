@@ -1,0 +1,115 @@
+# Google Cloud Build configuration for deploying the RFP Analyzer application.
+# This file defines a CI/CD pipeline to build, test, and deploy the
+# frontend and backend services to Cloud Run.
+
+steps:
+  # ========================================================================================
+  # Backend Build, Test & Deploy
+  # ========================================================================================
+
+  # 1. Build the backend Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'Build Backend Image'
+    args:
+      - 'build'
+      - '-t'
+      - '${_GCP_REGION}-docker.pkg.dev/$PROJECT_ID/${_ARTIFACT_REGISTRY_REPO}/${_BACKEND_SERVICE_NAME}:$COMMIT_SHA'
+      - './backend'
+
+  # 2. Push the backend image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'Push Backend Image'
+    args:
+      - 'push'
+      - '${_GCP_REGION}-docker.pkg.dev/$PROJECT_ID/${_ARTIFACT_REGISTRY_REPO}/${_BACKEND_SERVICE_NAME}:$COMMIT_SHA'
+
+  # 3. Run database migrations (Alembic)
+  # This step runs the migrations before deploying the new version of the application.
+  # It uses the newly built image and connects to the Cloud SQL database.
+  - name: '${_GCP_REGION}-docker.pkg.dev/$PROJECT_ID/${_ARTIFACT_REGISTRY_REPO}/${_BACKEND_SERVICE_NAME}:${COMMIT_SHA}'
+    id: 'Run Database Migrations'
+    entrypoint: 'alembic'
+    args:
+      - 'upgrade'
+      - 'head'
+    env:
+      - 'DATABASE_URL=${_DATABASE_URL}' # This should be a secret
+
+  # 4. Deploy the backend service to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'Deploy Backend'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - '${_BACKEND_SERVICE_NAME}'
+      - '--image=${_GCP_REGION}-docker.pkg.dev/$PROJECT_ID/${_ARTIFACT_REGISTRY_REPO}/${_BACKEND_SERVICE_NAME}:$COMMIT_SHA'
+      - '--region=${_GCP_REGION}'
+      - '--platform=managed'
+      - '--allow-unauthenticated' # For now, will be changed to authenticated and invoked by frontend
+      - '--add-cloudsql-instances=${_CLOUD_SQL_CONNECTION_NAME}'
+      - '--update-secrets=DATABASE_URL=projects/$PROJECT_ID/secrets/DATABASE_URL:latest,GEMINI_API_KEY=projects/$PROJECT_ID/secrets/GEMINI_API_KEY:latest,GCS_BUCKET=projects/$PROJECT_ID/secrets/GCS_BUCKET:latest'
+      # Add other secrets here, mounted from Secret Manager
+      # Example: --update-secrets=GCP_PROJECT_ID=${_BACKEND_SERVICE_NAME}-gcp-project-id:latest,GCS_BUCKET=...
+
+  # ========================================================================================
+  # Frontend Build & Deploy
+  # ========================================================================================
+
+  # 5. Get the backend URL
+  # We need to get the URL of the deployed backend service to pass it to the frontend build.
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'Get Backend URL'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        gcloud run services describe ${_BACKEND_SERVICE_NAME} --platform managed --region ${_GCP_REGION} --format 'value(status.url)' > /workspace/backend_url.txt
+
+  # 6. Build the frontend Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'Build Frontend Image'
+    args:
+      - 'build'
+      - '--build-arg'
+      - 'VITE_API_URL=$(cat /workspace/backend_url.txt)/api/v1' # Pass backend URL
+      - '-t'
+      - '${_GCP_REGION}-docker.pkg.dev/$PROJECT_ID/${_ARTIFACT_REGISTRY_REPO}/${_FRONTEND_SERVICE_NAME}:$COMMIT_SHA'
+      - './frontend'
+
+  # 7. Push the frontend image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'Push Frontend Image'
+    args:
+      - 'push'
+      - '${_GCP_REGION}-docker.pkg.dev/$PROJECT_ID/${_ARTIFACT_REGISTRY_REPO}/${_FRONTEND_SERVICE_NAME}:$COMMIT_SHA'
+
+  # 8. Deploy the frontend service to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'Deploy Frontend'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - '${_FRONTEND_SERVICE_NAME}'
+      - '--image=${_GCP_REGION}-docker.pkg.dev/$PROJECT_ID/${_ARTIFACT_REGISTRY_REPO}/${_FRONTEND_SERVICE_NAME}:$COMMIT_SHA'
+      - '--region=${_GCP_REGION}'
+      - '--platform=managed'
+      - '--allow-unauthenticated' # Frontend should be publicly accessible
+
+# Images to be pushed to Artifact Registry
+images:
+  - '${_GCP_REGION}-docker.pkg.dev/$PROJECT_ID/${_ARTIFACT_REGISTRY_REPO}/${_BACKEND_SERVICE_NAME}:$COMMIT_SHA'
+  - '${_GCP_REGION}-docker.pkg.dev/$PROJECT_ID/${_ARTIFACT_REGISTRY_REPO}/${_FRONTEND_SERVICE_NAME}:$COMMIT_SHA'
+
+# Substitutions - these variables can be set when triggering the build
+substitutions:
+  _GCP_REGION: 'us-central1'
+  _ARTIFACT_REGISTRY_REPO: 'rfp-analyzer-repo'
+  _BACKEND_SERVICE_NAME: 'rfp-backend'
+  _FRONTEND_SERVICE_NAME: 'rfp-frontend'
+  _CLOUD_SQL_CONNECTION_NAME: 'cloudv2-484122:us-central1:rfp-analyzer-db'
+  _DATABASE_URL: 'your-database-url-secret' # Should be a Secret Manager reference
+
+# Timeout for the build
+timeout: '1800s' # 30 minutes

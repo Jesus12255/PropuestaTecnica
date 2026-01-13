@@ -33,3 +33,5 @@ python-docx>=1.1.0
 # Development
 pytest>=8.0.0
 pytest-asyncio>=0.23.0
+alembic
+pydantic-settings
