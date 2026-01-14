@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP Talent Search - Demo</title>
+    <style>
+        :root {
+            --bg-primary: #0a0a0b;
+            --bg-secondary: #141416;
+            --bg-card: #1a1a1d;
+            --border-color: #2a2a2d;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0a5;
+            --accent-red: #e31837;
+            --accent-red-hover: #ff2d4d;
+            --success: #22c55e;
+            --warning: #f59e0b;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Header */
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, var(--accent-red), #ff6b6b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        header p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        /* Status Badge */
+        .status-bar {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: var(--bg-secondary);
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--text-secondary);
+        }
+
+        .status-dot.online {
+            background: var(--success);
+            box-shadow: 0 0 10px var(--success);
+        }
+
+        .status-dot.offline {
+            background: var(--accent-red);
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 1rem;
+        }
+
+        .tab {
+            padding: 0.75rem 1.5rem;
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.95rem;
+        }
+
+        .tab:hover {
+            border-color: var(--accent-red);
+            color: var(--text-primary);
+        }
+
+        .tab.active {
+            background: var(--accent-red);
+            border-color: var(--accent-red);
+            color: white;
+        }
+
+        /* Panels */
+        .panel {
+            display: none;
+        }
+
+        .panel.active {
+            display: block;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .card h3 {
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Forms */
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        input, textarea, select {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: var(--accent-red);
+        }
+
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--accent-red);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-red-hover);
+            transform: translateY(-2px);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--accent-red);
+        }
+
+        /* Results */
+        .results {
+            margin-top: 1.5rem;
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .results-count {
+            color: var(--text-secondary);
+        }
+
+        /* Candidate Card */
+        .candidate {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .candidate:hover {
+            border-color: var(--accent-red);
+        }
+
+        .candidate-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.75rem;
+        }
+
+        .candidate-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .candidate-cargo {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .candidate-score {
+            background: linear-gradient(135deg, var(--accent-red), #ff6b6b);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .candidate-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .candidate-info-item {
+            color: var(--text-secondary);
+        }
+
+        .candidate-info-item span {
+            color: var(--text-primary);
+        }
+
+        /* Tags */
+        .tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+        }
+
+        .tag {
+            padding: 0.25rem 0.75rem;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 15px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .tag.cert {
+            border-color: var(--success);
+            color: var(--success);
+        }
+
+        .tag.skill {
+            border-color: #3b82f6;
+            color: #3b82f6;
+        }
+
+        /* Section titles in candidate */
+        .section-title {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Chat */
+        .chat-response {
+            background: var(--bg-secondary);
+            border-left: 3px solid var(--accent-red);
+            padding: 1rem 1.25rem;
+            border-radius: 0 8px 8px 0;
+            margin-top: 1rem;
+        }
+
+        .chat-response p {
+            color: var(--text-primary);
+            line-height: 1.7;
+        }
+
+        .interpretation {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: var(--bg-primary);
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+
+        .interpretation-title {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            margin-bottom: 0.5rem;
+        }
+
+        /* Loading */
+        .loading {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            padding: 2rem;
+            color: var(--text-secondary);
+        }
+
+        .loading.active {
+            display: flex;
+        }
+
+        .spinner {
+            width: 24px;
+            height: 24px;
+            border: 3px solid var(--border-color);
+            border-top-color: var(--accent-red);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Error */
+        .error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid #ef4444;
+            color: #ef4444;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-secondary);
+        }
+
+        .empty-state svg {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            header h1 {
+                font-size: 1.75rem;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .tabs {
+                flex-wrap: wrap;
+            }
+
+            .tab {
+                flex: 1;
+                text-align: center;
+                min-width: 120px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>MCP Talent Search</h1>
+            <p>Sistema de busqueda semantica de talento para Team Building</p>
+            <div class="status-bar">
+                <div class="status-item">
+                    <div class="status-dot" id="statusDot"></div>
+                    <span id="statusText">Verificando...</span>
+                </div>
+                <div class="status-item" id="statsItem" style="display: none;">
+                    <span id="statsText"></span>
+                </div>
+            </div>
+        </header>
+
+        <div class="tabs">
+            <button class="tab active" data-tab="search">Busqueda Simple</button>
+            <button class="tab" data-tab="batch">Busqueda Batch</button>
+            <button class="tab" data-tab="chat">Chat Natural</button>
+        </div>
+
+        <!-- Search Panel -->
+        <div class="panel active" id="search">
+            <div class="card">
+                <h3>
+                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                    Buscar Talento
+                </h3>
+                <form id="searchForm">
+                    <div class="form-group">
+                        <label for="consulta">Skills o certificaciones</label>
+                        <input type="text" id="consulta" placeholder="Ej: Java Spring Boot Microservicios" required>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="pais">Pais (opcional)</label>
+                            <select id="pais">
+                                <option value="">Todos los paises</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="limit">Cantidad de resultados</label>
+                            <input type="number" id="limit" value="5" min="1" max="20">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="searchBtn">
+                        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                        Buscar
+                    </button>
+                </form>
+            </div>
+
+            <div class="loading" id="searchLoading">
+                <div class="spinner"></div>
+                <span>Buscando candidatos...</span>
+            </div>
+
+            <div class="results" id="searchResults"></div>
+        </div>
+
+        <!-- Batch Panel -->
+        <div class="panel" id="batch">
+            <div class="card">
+                <h3>
+                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                    </svg>
+                    Buscar Equipo Completo
+                </h3>
+                <form id="batchForm">
+                    <div class="form-group">
+                        <label for="rolesJson">Roles requeridos (JSON)</label>
+                        <textarea id="rolesJson" placeholder='[
+  {"rol_id": "PM_Senior", "descripcion": "Project Manager PMP Scrum", "cantidad": 2},
+  {"rol_id": "Dev_Java", "descripcion": "Java Spring Boot AWS", "cantidad": 3}
+]'>[
+  {"rol_id": "PM_Senior", "descripcion": "Project Manager PMP Scrum Agile", "pais": null, "cantidad": 2},
+  {"rol_id": "Dev_Backend", "descripcion": "Java Spring Boot Microservicios AWS", "pais": null, "cantidad": 3}
+]</textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="batchBtn">
+                        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        </svg>
+                        Buscar Equipo
+                    </button>
+                </form>
+            </div>
+
+            <div class="loading" id="batchLoading">
+                <div class="spinner"></div>
+                <span>Buscando equipo...</span>
+            </div>
+
+            <div class="results" id="batchResults"></div>
+        </div>
+
+        <!-- Chat Panel -->
+        <div class="panel" id="chat">
+            <div class="card">
+                <h3>
+                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                    </svg>
+                    Chat Natural (Gemini)
+                </h3>
+                <form id="chatForm">
+                    <div class="form-group">
+                        <label for="mensaje">Escribe tu consulta en lenguaje natural</label>
+                        <textarea id="mensaje" placeholder="Ej: Necesito armar un equipo de 5 personas para un proyecto de migracion a la nube en Chile. Necesito gente con experiencia en AWS y Azure."></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="chatBtn">
+                        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                        </svg>
+                        Enviar
+                    </button>
+                </form>
+            </div>
+
+            <div class="loading" id="chatLoading">
+                <div class="spinner"></div>
+                <span>Procesando con Gemini...</span>
+            </div>
+
+            <div class="results" id="chatResults"></div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const API_URL = 'http://localhost:8083';
+
+        // DOM Elements
+        const tabs = document.querySelectorAll('.tab');
+        const panels = document.querySelectorAll('.panel');
+
+        // Tab switching
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                panels.forEach(p => p.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(tab.dataset.tab).classList.add('active');
+            });
+        });
+
+        // Check health on load
+        async function checkHealth() {
+            const dot = document.getElementById('statusDot');
+            const text = document.getElementById('statusText');
+            const statsItem = document.getElementById('statsItem');
+            const statsText = document.getElementById('statsText');
+
+            try {
+                const res = await fetch(`${API_URL}/health`);
+                const data = await res.json();
+                
+                dot.classList.add('online');
+                dot.classList.remove('offline');
+                text.textContent = `${data.status} - v${data.version}`;
+                
+                statsItem.style.display = 'flex';
+                statsText.textContent = `${data.total_colaboradores} colaboradores | ${data.total_certificaciones} certs | ${data.total_skills} skills`;
+
+                // Load countries
+                loadCountries();
+            } catch (e) {
+                dot.classList.add('offline');
+                dot.classList.remove('online');
+                text.textContent = 'Servicio no disponible';
+            }
+        }
+
+        // Load countries
+        async function loadCountries() {
+            try {
+                const res = await fetch(`${API_URL}/countries`);
+                const data = await res.json();
+                const select = document.getElementById('pais');
+                
+                data.paises.forEach(pais => {
+                    const option = document.createElement('option');
+                    option.value = pais;
+                    option.textContent = pais;
+                    select.appendChild(option);
+                });
+            } catch (e) {
+                console.error('Error loading countries:', e);
+            }
+        }
+
+        // Render candidate card
+        function renderCandidate(candidato) {
+            const certs = candidato.certificaciones?.slice(0, 3) || [];
+            const skills = candidato.skills?.slice(0, 5) || [];
+
+            return `
+                <div class="candidate">
+                    <div class="candidate-header">
+                        <div>
+                            <div class="candidate-name">${candidato.nombre}</div>
+                            <div class="candidate-cargo">${candidato.cargo}</div>
+                        </div>
+                        <div class="candidate-score">${(candidato.score * 100).toFixed(0)}%</div>
+                    </div>
+                    <div class="candidate-info">
+                        <div class="candidate-info-item">Email: <span>${candidato.email}</span></div>
+                        <div class="candidate-info-item">Matricula: <span>${candidato.matricula}</span></div>
+                        ${candidato.pais ? `<div class="candidate-info-item">Pais: <span>${candidato.pais}</span></div>` : ''}
+                        ${candidato.lider ? `<div class="candidate-info-item">Lider: <span>${candidato.lider.nombre || 'N/A'}</span></div>` : ''}
+                    </div>
+                    <div class="candidate-info-item">Match: <span style="color: var(--accent-red);">${candidato.match_principal}</span></div>
+                    ${certs.length > 0 ? `
+                        <div class="section-title">Certificaciones (${candidato.certificaciones?.length || 0})</div>
+                        <div class="tags">
+                            ${certs.map(c => `<span class="tag cert">${c.nombre}</span>`).join('')}
+                            ${candidato.certificaciones?.length > 3 ? `<span class="tag">+${candidato.certificaciones.length - 3} mas</span>` : ''}
+                        </div>
+                    ` : ''}
+                    ${skills.length > 0 ? `
+                        <div class="section-title">Skills (${candidato.skills?.length || 0})</div>
+                        <div class="tags">
+                            ${skills.map(s => `<span class="tag skill">${s.nombre}${s.proficiencia ? ` (${s.proficiencia})` : ''}</span>`).join('')}
+                            ${candidato.skills?.length > 5 ? `<span class="tag">+${candidato.skills.length - 5} mas</span>` : ''}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        // Search form
+        document.getElementById('searchForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const btn = document.getElementById('searchBtn');
+            const loading = document.getElementById('searchLoading');
+            const results = document.getElementById('searchResults');
+            
+            btn.disabled = true;
+            loading.classList.add('active');
+            results.innerHTML = '';
+
+            try {
+                const res = await fetch(`${API_URL}/search`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        consulta: document.getElementById('consulta').value,
+                        pais: document.getElementById('pais').value || null,
+                        limit: parseInt(document.getElementById('limit').value)
+                    })
+                });
+
+                const data = await res.json();
+
+                if (data.exito && data.candidatos.length > 0) {
+                    results.innerHTML = `
+                        <div class="results-header">
+                            <h3>Resultados</h3>
+                            <span class="results-count">${data.total} candidatos encontrados</span>
+                        </div>
+                        ${data.candidatos.map(renderCandidate).join('')}
+                    `;
+                } else {
+                    results.innerHTML = `
+                        <div class="empty-state">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <p>No se encontraron candidatos</p>
+                        </div>
+                    `;
+                }
+            } catch (e) {
+                results.innerHTML = `<div class="error">Error: ${e.message}</div>`;
+            } finally {
+                btn.disabled = false;
+                loading.classList.remove('active');
+            }
+        });
+
+        // Batch form
+        document.getElementById('batchForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const btn = document.getElementById('batchBtn');
+            const loading = document.getElementById('batchLoading');
+            const results = document.getElementById('batchResults');
+            
+            btn.disabled = true;
+            loading.classList.add('active');
+            results.innerHTML = '';
+
+            try {
+                const roles = JSON.parse(document.getElementById('rolesJson').value);
+                
+                const res = await fetch(`${API_URL}/batch-search`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ roles })
+                });
+
+                const data = await res.json();
+
+                if (data.exito) {
+                    let html = `
+                        <div class="results-header">
+                            <h3>Equipo Encontrado</h3>
+                            <span class="results-count">${data.total_roles} roles | ${data.total_candidatos} candidatos</span>
+                        </div>
+                    `;
+
+                    for (const [rolId, rol] of Object.entries(data.resultados)) {
+                        html += `
+                            <div class="card">
+                                <h3 style="color: var(--accent-red);">${rolId}</h3>
+                                <p style="color: var(--text-secondary); margin-bottom: 1rem;">${rol.descripcion}</p>
+                                ${rol.candidatos.length > 0 
+                                    ? rol.candidatos.map(renderCandidate).join('') 
+                                    : '<p style="color: var(--text-secondary);">No se encontraron candidatos para este rol</p>'}
+                            </div>
+                        `;
+                    }
+
+                    results.innerHTML = html;
+                }
+            } catch (e) {
+                results.innerHTML = `<div class="error">Error: ${e.message}</div>`;
+            } finally {
+                btn.disabled = false;
+                loading.classList.remove('active');
+            }
+        });
+
+        // Chat form
+        document.getElementById('chatForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const btn = document.getElementById('chatBtn');
+            const loading = document.getElementById('chatLoading');
+            const results = document.getElementById('chatResults');
+            
+            btn.disabled = true;
+            loading.classList.add('active');
+            results.innerHTML = '';
+
+            try {
+                const res = await fetch(`${API_URL}/chat`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        mensaje: document.getElementById('mensaje').value
+                    })
+                });
+
+                const data = await res.json();
+
+                if (data.exito) {
+                    results.innerHTML = `
+                        <div class="chat-response">
+                            <p>${data.respuesta_natural}</p>
+                            <div class="interpretation">
+                                <div class="interpretation-title">Interpretacion de Gemini:</div>
+                                <pre style="color: var(--text-secondary); font-size: 0.85rem; overflow-x: auto;">${JSON.stringify(data.interpretacion, null, 2)}</pre>
+                            </div>
+                        </div>
+                        <div class="results-header" style="margin-top: 1.5rem;">
+                            <h3>Candidatos Encontrados</h3>
+                            <span class="results-count">${data.total} candidatos</span>
+                        </div>
+                        ${data.candidatos.map(renderCandidate).join('')}
+                    `;
+                } else {
+                    results.innerHTML = `
+                        <div class="chat-response">
+                            <p>${data.respuesta_natural || 'No se encontraron resultados'}</p>
+                        </div>
+                    `;
+                }
+            } catch (e) {
+                results.innerHTML = `<div class="error">Error: ${e.message}</div>`;
+            } finally {
+                btn.disabled = false;
+                loading.classList.remove('active');
+            }
+        });
+
+        // Init
+        checkHealth();
+    </script>
+</body>
+</html>

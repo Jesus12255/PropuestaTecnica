@@ -1,0 +1,28 @@
+# MCP Talent Search - Dependencies
+# ==================================
+
+# Framework MCP (opcional, para modo stdio)
+mcp>=0.1.0
+
+# Procesamiento de datos
+pandas>=2.0.0
+openpyxl>=3.1.0
+
+# Base de datos vectorial
+lancedb>=0.4.0
+tantivy
+
+# Machine Learning / Embeddings
+sentence-transformers>=2.2.0
+torch>=2.0.0
+
+# API REST
+fastapi>=0.100.0
+uvicorn[standard]>=0.23.0
+pydantic>=2.0.0
+
+# HTTP Client (para Gemini)
+httpx>=0.25.0
+
+# Utilidades
+python-dotenv>=1.0.0
