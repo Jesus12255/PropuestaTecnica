@@ -3,15 +3,16 @@
  */
 import React from 'react';
 import { Layout, Menu, Avatar, Dropdown, Typography, Space, Badge } from 'antd';
-import { 
-  DashboardOutlined, 
-  LogoutOutlined, 
+import {
+  DashboardOutlined,
+  LogoutOutlined,
   UserOutlined,
   FileTextOutlined,
   ClockCircleOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
   SettingOutlined,
+  SafetyCertificateOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -68,6 +69,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     if (path === '/rfps/pending') return '/rfps/pending';
     if (path === '/rfps/approved') return '/rfps/approved';
     if (path === '/rfps/rejected') return '/rfps/rejected';
+    if (path === '/certifications') return '/certifications';
     if (path === '/settings') return '/settings';
     return '/';
   };
@@ -92,8 +94,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         <Space>
           Pendientes
           {stats && stats.pending_count + stats.analyzing_count > 0 && (
-            <Badge 
-              count={stats.pending_count + stats.analyzing_count} 
+            <Badge
+              count={stats.pending_count + stats.analyzing_count}
               size="small"
               style={{ backgroundColor: '#faad14' }}
             />
@@ -109,8 +111,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         <Space>
           Aprobados
           {stats && stats.go_count > 0 && (
-            <Badge 
-              count={stats.go_count} 
+            <Badge
+              count={stats.go_count}
               size="small"
               style={{ backgroundColor: '#52c41a' }}
             />
@@ -126,8 +128,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         <Space>
           Rechazados
           {stats && stats.no_go_count > 0 && (
-            <Badge 
-              count={stats.no_go_count} 
+            <Badge
+              count={stats.no_go_count}
               size="small"
               style={{ backgroundColor: '#ff4d4f' }}
             />
@@ -135,6 +137,12 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         </Space>
       ),
       onClick: () => navigate('/rfps/rejected'),
+    },
+    {
+      key: '/certifications',
+      icon: <SafetyCertificateOutlined />,
+      label: 'Certificaciones',
+      onClick: () => navigate('/certifications'),
     },
     {
       type: 'divider' as const,
@@ -161,10 +169,10 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
           bottom: 0,
         }}
       >
-        <div style={{ 
-          height: 64, 
-          display: 'flex', 
-          alignItems: 'center', 
+        <div style={{
+          height: 64,
+          display: 'flex',
+          alignItems: 'center',
           justifyContent: 'center',
           borderBottom: '1px solid rgba(255,255,255,0.1)',
         }}>
@@ -180,10 +188,10 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
           style={{ marginTop: 16 }}
         />
       </Sider>
-      
+
       <Layout style={{ marginLeft: 240 }}>
-        <Header style={{ 
-          background: '#fff', 
+        <Header style={{
+          background: '#fff',
           padding: '0 24px',
           display: 'flex',
           alignItems: 'center',
@@ -197,7 +205,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
             </Space>
           </Dropdown>
         </Header>
-        
+
         <Content style={{ background: '#f5f5f5' }}>
           {children}
         </Content>

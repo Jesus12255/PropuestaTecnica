@@ -33,7 +33,7 @@ export interface AuthToken {
 
 export type RFPStatus = 'pending' | 'analyzing' | 'analyzed' | 'go' | 'no_go' | 'error';
 
-export type RFPCategory = 
+export type RFPCategory =
   | 'mantencion_aplicaciones'
   | 'desarrollo_software'
   | 'analitica'
@@ -273,4 +273,21 @@ export interface TeamSuggestionResponse {
   cost_estimation: CostEstimation;
   suggested_team: SuggestedTeam | null;
   message: string | null;
+}
+
+// ============ CERTIFICATIONS ============
+
+export interface Certification {
+  id: string;
+  name: string;
+  filename: string;
+  description: string | null;
+  location: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CertificationUploadResponse {
+  message: string;
+  id: string;
 }

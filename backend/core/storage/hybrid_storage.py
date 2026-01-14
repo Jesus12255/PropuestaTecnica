@@ -4,7 +4,7 @@ Usa GCP Cloud Storage como principal y almacenamiento local como fallback.
 """
 import logging
 from pathlib import Path
-from typing import Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable, BinaryIO
 
 from core.config import settings
 
@@ -54,33 +54,65 @@ class HybridStorageService:
     def _init_gcs(self):
         """Intenta inicializar el cliente de GCS."""
         try:
-            # Verificar que tengamos las credenciales y configuración necesaria
+            # Verificar configuración mínima
             if not settings.GCP_PROJECT_ID or not settings.GCS_BUCKET:
                 logger.warning("GCS not configured: missing GCP_PROJECT_ID or GCS_BUCKET")
                 return
-            
-            # Verificar que exista el archivo de credenciales
-            creds_path = Path(settings.GOOGLE_APPLICATION_CREDENTIALS)
-            if not creds_path.exists():
-                logger.warning(f"GCS credentials file not found: {creds_path}")
-                return
-            
+
             from google.cloud import storage
+            from google.oauth2 import service_account
             from google.auth.exceptions import DefaultCredentialsError
-            
-            # Intentar crear el cliente
-            client = storage.Client(project=settings.GCP_PROJECT_ID)
-            bucket = client.bucket(settings.GCS_BUCKET)
-            
-            # Verificar que el bucket existe intentando obtener sus metadata
-            # Esto valida que las credenciales funcionan
-            bucket.reload()
-            
-            # Si llegamos aquí, GCS está disponible
-            from core.gcp.storage import StorageClient
-            self._gcs_client = StorageClient()
-            self._gcs_available = True
-            logger.info(f"GCS client initialized successfully for bucket: {settings.GCS_BUCKET}")
+
+            client = None
+
+            # Estrategia 1: Credenciales explícitas desde variables de entorno
+            if settings.GCP_CLIENT_EMAIL and settings.GCP_PRIVATE_KEY:
+                # Corregir formato de la llave privada (reemplazar \\n por \n reales)
+                private_key = settings.GCP_PRIVATE_KEY.replace("\\n", "\n")
+                
+                creds_dict = {
+                    "type": "service_account",
+                    "project_id": settings.GCP_PROJECT_ID,
+                    "private_key_id": "env_var_key", # id dummy
+                    "private_key": private_key,
+                    "client_email": settings.GCP_CLIENT_EMAIL,
+                    "token_uri": "https://oauth2.googleapis.com/token",
+                }
+                
+                credentials = service_account.Credentials.from_service_account_info(creds_dict)
+                client = storage.Client(credentials=credentials, project=settings.GCP_PROJECT_ID)
+                logger.info("Initializing GCS with credentials from environment variables")
+
+            # Estrategia 2: Archivo JSON (GOOGLE_APPLICATION_CREDENTIALS)
+            elif settings.GOOGLE_APPLICATION_CREDENTIALS:
+                creds_path = Path(settings.GOOGLE_APPLICATION_CREDENTIALS)
+                if creds_path.exists():
+                    import os
+                    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str(creds_path.resolve())
+                    client = storage.Client(project=settings.GCP_PROJECT_ID)
+                    logger.info(f"Initializing GCS with credentials file: {creds_path}")
+                else:
+                    logger.warning(f"GCS credentials file not found: {creds_path}")
+
+            # Estrategia 3: Default (ADC)
+            else:
+                client = storage.Client(project=settings.GCP_PROJECT_ID)
+                logger.info("Initializing GCS with Application Default Credentials")
+
+            if client:
+                bucket = client.bucket(settings.GCS_BUCKET)
+                # No llamamos a bucket.reload() aquí porque requiere permisos de 'storage.buckets.get'
+                # que una Service Account de solo escritura podría no tener.
+                # Si falla el upload despues, el fallback a local lo manejará.
+                
+                from core.gcp.storage import StorageClient
+                # Inyectar el cliente ya configurado
+                self._gcs_client = StorageClient(client=client)
+                self._gcs_available = True
+                logger.info(f"GCS client initialized optimistically for bucket: {settings.GCS_BUCKET}")
+            else:
+                logger.warning("No credentials found for GCS")
+                return
             
         except ImportError:
             logger.warning("google-cloud-storage not installed, GCS not available")
@@ -88,6 +120,28 @@ class HybridStorageService:
             logger.warning(f"GCS credentials error: {e}")
         except Exception as e:
             logger.warning(f"Failed to initialize GCS client: {e}")
+            
+    def upload_file_object(
+        self,
+        file_obj: BinaryIO,
+        file_name: str,
+        content_type: str = "application/pdf",
+        folder: str = "documents",
+    ) -> str:
+        """
+        Guarda un archivo desde un objeto file-like.
+        
+        Args:
+            file_obj: Objeto file-like con el contenido
+            file_name: Nombre original del archivo
+            content_type: Tipo MIME del archivo
+            folder: Carpeta destino
+            
+        Returns:
+            URI del archivo
+        """
+        content = file_obj.read()
+        return self.upload_file(content, file_name, content_type, folder)
     
     def _init_local_storage(self):
         """Inicializa el almacenamiento local."""
@@ -112,7 +166,7 @@ class HybridStorageService:
         folder: str = "documents",
     ) -> str:
         """
-        Sube un archivo, intentando GCS primero y local como fallback.
+        Sube un archivo EXCLUSIVAMENTE a GCS.
         
         Args:
             file_content: Contenido del archivo en bytes
@@ -121,37 +175,27 @@ class HybridStorageService:
             folder: Carpeta destino
             
         Returns:
-            URI del archivo (gs:// para GCS, local:// para local)
+            URI del archivo (gs:// para GCS)
+            
+        Raises:
+            RuntimeError: Si GCS no está disponible.
         """
-        # Intentar GCS primero si está disponible
-        if self._gcs_available and self._gcs_client:
-            try:
-                uri = self._gcs_client.upload_file(
-                    file_content=file_content,
-                    file_name=file_name,
-                    content_type=content_type,
-                    folder=folder,
-                )
-                logger.info(f"File uploaded to GCS: {uri}")
-                return uri
-                
-            except Exception as e:
-                logger.warning(f"GCS upload failed, falling back to local: {e}")
-        
-        # Fallback a almacenamiento local
+        if not self._gcs_available or not self._gcs_client:
+             raise RuntimeError("GCS storage is not available and local storage is disabled.")
+
         try:
-            uri = self._local_storage.upload_file(
+            uri = self._gcs_client.upload_file(
                 file_content=file_content,
                 file_name=file_name,
                 content_type=content_type,
                 folder=folder,
             )
-            logger.info(f"File uploaded to local storage: {uri}")
+            logger.info(f"File uploaded to GCS: {uri}")
             return uri
             
         except Exception as e:
-            logger.error(f"Local storage upload also failed: {e}")
-            raise RuntimeError(f"Failed to upload file to any storage backend: {e}")
+            logger.error(f"GCS upload failed: {e}")
+            raise RuntimeError(f"Failed to upload file to GCS: {e}")
     
     def download_file(self, uri: str) -> bytes:
         """

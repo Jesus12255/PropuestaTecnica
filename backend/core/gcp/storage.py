@@ -16,9 +16,13 @@ logger = logging.getLogger(__name__)
 class StorageClient:
     """Cliente para interactuar con Google Cloud Storage."""
     
-    def __init__(self):
+    def __init__(self, client=None):
         """Inicializa el cliente de Cloud Storage."""
-        self.client = storage.Client(project=settings.GCP_PROJECT_ID)
+        if client:
+             self.client = client
+        else:
+             self.client = storage.Client(project=settings.GCP_PROJECT_ID)
+             
         self.bucket_name = settings.GCS_BUCKET
         self.bucket = self.client.bucket(self.bucket_name)
         logger.info(f"Storage client initialized for bucket: {self.bucket_name}")
@@ -45,8 +49,12 @@ class StorageClient:
         try:
             # Generar path único
             file_id = str(uuid.uuid4())
-            extension = Path(file_name).suffix
-            blob_name = f"{folder}/{file_id}/{file_name}"
+            path = Path(file_name)
+            stem = path.stem
+            suffix = path.suffix
+            
+            # Formato solicitado: nombre-uuid.ext
+            blob_name = f"{folder}/{stem}-{file_id}{suffix}"
             
             # Subir archivo
             blob = self.bucket.blob(blob_name)
