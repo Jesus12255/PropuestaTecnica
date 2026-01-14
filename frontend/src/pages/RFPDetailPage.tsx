@@ -76,7 +76,6 @@ const RFPDetailPage: React.FC = () => {
   const { 
     data: teamData, 
     isLoading: teamDataLoading,
-    refetch: refetchTeamData 
   } = useQuery({
     queryKey: ['rfp-team-estimation', id],
     queryFn: () => rfpApi.getTeamEstimation(id!),
@@ -104,7 +103,12 @@ const RFPDetailPage: React.FC = () => {
     mutationFn: (forceRefresh: boolean = false) => rfpApi.suggestTeam(id!, forceRefresh),
     onSuccess: (data) => {
       message.success(`Se encontraron ${data.suggested_team?.total_candidatos || 0} candidatos`);
-      refetchTeamData();
+      // Actualizar el cache directamente con los datos de la respuesta
+      queryClient.setQueryData(['rfp-team-estimation', id], {
+        team_estimation: data.team_estimation,
+        cost_estimation: data.cost_estimation,
+        suggested_team: data.suggested_team,
+      });
       setActiveTab('candidates');
     },
     onError: (error: any) => {

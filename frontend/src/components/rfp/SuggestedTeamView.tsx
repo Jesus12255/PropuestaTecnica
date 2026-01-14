@@ -170,7 +170,14 @@ const RolePanel: React.FC<{ roleId: string; roleResult: MCPRoleResult }> = ({ ro
 };
 
 const SuggestedTeamView: React.FC<SuggestedTeamViewProps> = ({ suggestedTeam }) => {
+  // Debug logging - más detallado
+  console.log('SuggestedTeamView - suggestedTeam:', JSON.stringify(suggestedTeam, null, 2));
+  console.log('SuggestedTeamView - mcp_available:', suggestedTeam?.mcp_available);
+  console.log('SuggestedTeamView - resultados:', suggestedTeam?.resultados);
+  console.log('SuggestedTeamView - total_candidatos:', suggestedTeam?.total_candidatos);
+
   if (!suggestedTeam) {
+    console.log('SuggestedTeamView - No suggestedTeam provided');
     return (
       <Empty
         description="No hay candidatos sugeridos. Haz clic en 'Buscar Candidatos' para consultar el sistema de talentos."
@@ -180,6 +187,7 @@ const SuggestedTeamView: React.FC<SuggestedTeamViewProps> = ({ suggestedTeam }) 
   }
 
   if (suggestedTeam.error) {
+    console.log('SuggestedTeamView - Error:', suggestedTeam.error);
     return (
       <Alert
         type="error"
@@ -190,7 +198,8 @@ const SuggestedTeamView: React.FC<SuggestedTeamViewProps> = ({ suggestedTeam }) 
     );
   }
 
-  if (!suggestedTeam.mcp_available) {
+  if (suggestedTeam.mcp_available === false) {
+    console.log('SuggestedTeamView - MCP not available');
     return (
       <Alert
         type="warning"
@@ -201,7 +210,49 @@ const SuggestedTeamView: React.FC<SuggestedTeamViewProps> = ({ suggestedTeam }) 
     );
   }
 
-  const roleEntries = Object.entries(suggestedTeam.resultados);
+  // Asegurarse de que resultados existe y es un objeto
+  const resultados = suggestedTeam.resultados || {};
+  const roleEntries = Object.entries(resultados);
+  
+  console.log('SuggestedTeamView - roleEntries:', roleEntries);
+  console.log('SuggestedTeamView - roleEntries.length:', roleEntries.length);
+
+  // Si no hay resultados, mostrar mensaje
+  if (roleEntries.length === 0) {
+    return (
+      <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        {/* Summary Cards */}
+        <Row gutter={16}>
+          <Col span={6}>
+            <Card size="small">
+              <Statistic
+                title="Roles Buscados"
+                value={suggestedTeam.total_roles || 0}
+                prefix={<TeamOutlined />}
+                valueStyle={{ color: '#1890ff' }}
+              />
+            </Card>
+          </Col>
+          <Col span={6}>
+            <Card size="small">
+              <Statistic
+                title="Candidatos Encontrados"
+                value={suggestedTeam.total_candidatos || 0}
+                prefix={<UserOutlined />}
+                valueStyle={{ color: '#52c41a' }}
+              />
+            </Card>
+          </Col>
+        </Row>
+        <Alert
+          type="info"
+          showIcon
+          message="Sin resultados detallados"
+          description="Se encontraron candidatos pero no hay detalles de roles disponibles. Intente actualizar la búsqueda."
+        />
+      </Space>
+    );
+  }
 
   return (
     <Space direction="vertical" size="large" style={{ width: '100%' }}>

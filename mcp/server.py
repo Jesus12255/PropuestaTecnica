@@ -593,7 +593,7 @@ def search_and_enrich(query: str, limit: int = 10, pais: Optional[str] = None) -
             skills=all_skills,
             lider=lider,
             match_principal=cand["match_principal"],
-            score=round(cand["score"], 4)
+            score=round(cand["score"] * 100, 2)  # Convertir a porcentaje 0-100
         ))
     
     return perfiles
