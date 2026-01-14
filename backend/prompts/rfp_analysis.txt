@@ -19,7 +19,9 @@ Analiza el documento RFP adjunto y extrae la información según el esquema JSON
 
 ```json
 {
+  "title": "Título oficial del proyecto o licitación",
   "client_name": "string | null - Nombre del cliente/empresa",
+  "client_acronym": "Siglas o abreviatura del cliente (ej: BCP, INDAP, BBVA)",
   "country": "string | null - País de origen del RFP",
   "summary": "string | null - Resumen/objetivo del proyecto (máximo 200 palabras)",
   "category": "string | null - Una de: mantencion_aplicaciones, desarrollo_software, analitica, ia_chatbot, ia_documentos, ia_video, otro",
