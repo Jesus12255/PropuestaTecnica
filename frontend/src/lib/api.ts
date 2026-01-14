@@ -16,7 +16,6 @@ import type {
   TeamSuggestionResponse,
   TeamEstimation,
   CostEstimation,
-  CostEstimation,
   SuggestedTeam,
   Certification,
   CertificationUploadResponse,

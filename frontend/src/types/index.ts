@@ -244,8 +244,17 @@ export interface MCPCandidate {
   pais: string | null;
   score: number;
   match_principal: string | null;
-  certificaciones: Array<{ nombre: string; institucion?: string }>;
-  skills: Array<{ nombre: string; proficiencia?: number }>;
+  certificaciones: Array<{ 
+    nombre: string; 
+    institucion?: string;
+    fecha_emision?: string;
+    fecha_expiracion?: string;
+  }>;
+  skills: Array<{ 
+    nombre: string; 
+    categoria?: string;
+    proficiencia?: number;
+  }>;
   lider: { nombre?: string; email?: string } | null;
 }
 

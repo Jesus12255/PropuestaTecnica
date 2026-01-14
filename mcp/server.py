@@ -26,6 +26,7 @@ import os
 import json
 import logging
 import re
+import math
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 from contextlib import asynccontextmanager
@@ -522,7 +523,10 @@ def search_and_enrich(query: str, limit: int = 10, pais: Optional[str] = None) -
                 continue
             
             dist = float(row.get("_distance", 0))
-            score = 1 / (1 + dist)
+            # Fórmula: convertir distancia L2 a score 0-100
+            # Distancias típicas van de 0 (idéntico) a ~20+ (muy diferente)
+            # Usamos exponencial negativa ajustada para este rango
+            score = 100 * math.exp(-dist / 15)  # dist=0->100, dist=15->37, dist=30->14
             
             if mat not in candidatos_raw or score > candidatos_raw[mat]["score"]:
                 candidatos_raw[mat] = {
@@ -546,7 +550,8 @@ def search_and_enrich(query: str, limit: int = 10, pais: Optional[str] = None) -
                 continue
             
             dist = float(row.get("_distance", 0))
-            score = 1 / (1 + dist)
+            # Fórmula: convertir distancia L2 a score 0-100
+            score = 100 * math.exp(-dist / 15)
             
             if mat not in candidatos_raw or score > candidatos_raw[mat]["score"]:
                 candidatos_raw[mat] = {
@@ -593,7 +598,7 @@ def search_and_enrich(query: str, limit: int = 10, pais: Optional[str] = None) -
             skills=all_skills,
             lider=lider,
             match_principal=cand["match_principal"],
-            score=round(cand["score"] * 100, 2)  # Convertir a porcentaje 0-100
+            score=round(cand["score"], 2)  # Ya está en escala 0-100
         ))
     
     return perfiles

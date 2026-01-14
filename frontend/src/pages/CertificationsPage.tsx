@@ -9,9 +9,6 @@ import {
     InboxOutlined,
     FileWordOutlined,
     CheckCircleOutlined,
-    ClockCircleOutlined,
-    CloseCircleOutlined,
-    LoadingOutlined
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { certificationsApi } from '../lib/api';
