@@ -100,6 +100,7 @@ async def upload_rfp(
             content, 
             filename,
             analysis_mode=analysis_mode,
+            db=db,
         )
         
         # Extraer campos indexados
@@ -112,6 +113,10 @@ async def upload_rfp(
         
         for field, value in indexed_fields.items():
             setattr(rfp, field, value)
+        
+        # Guardar recommended_isos en su columna específica
+        if "recommended_isos" in extracted_data:
+            rfp.recommended_isos = extracted_data["recommended_isos"]
         
         await db.commit()
         await db.refresh(rfp)
@@ -159,7 +164,7 @@ async def analyze_rfp_task(rfp_id: str, file_uri: str, file_content: bytes):
             
             # Analizar con Gemini
             analyzer = get_analyzer_service()
-            extracted_data = await analyzer.analyze_rfp_from_content(file_content, rfp.file_name)
+            extracted_data = await analyzer.analyze_rfp_from_content(file_content, rfp.file_name, db=db)
             
             # Extraer campos indexados
             indexed_fields = analyzer.extract_indexed_fields(extracted_data)
@@ -171,6 +176,10 @@ async def analyze_rfp_task(rfp_id: str, file_uri: str, file_content: bytes):
             
             for field, value in indexed_fields.items():
                 setattr(rfp, field, value)
+            
+            # Guardar recommended_isos en su columna específica
+            if "recommended_isos" in extracted_data:
+                rfp.recommended_isos = extracted_data["recommended_isos"]
             
             await db.commit()
             logger.info(f"RFP analysis completed: {rfp_id}")

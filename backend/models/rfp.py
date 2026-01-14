@@ -111,6 +111,7 @@ class RFPSubmission(Base):
     # Métricas de análisis
     confidence_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     recommendation: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    recommended_isos: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     
     # Decisión del BDM
     decision: Mapped[str | None] = mapped_column(String(10), nullable=True)  # go, no_go

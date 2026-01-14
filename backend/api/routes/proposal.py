@@ -43,16 +43,17 @@ async def generate_proposal(
         )
     
     try:
-        # Fetch filenames for selected certifications
-        cert_filenames = []
+        # Fetch locations (URIs) for selected certifications
+        cert_locations = []
         if request.certification_ids:
             from models.certification import Certification
             cert_result = await db.execute(
-                select(Certification.filename)
+                select(Certification.location)
                 .where(Certification.id.in_(request.certification_ids))
                 .where(Certification.is_active == True)
             )
-            cert_filenames = cert_result.scalars().all()
+            # Filter out None values just in case
+            cert_locations = [loc for loc in cert_result.scalars().all() if loc]
 
         generator = get_proposal_generator()
         
@@ -64,7 +65,7 @@ async def generate_proposal(
         context_data = generator.prepare_context(
             rfp_data, 
             user_name=user.full_name,
-            certification_filenames=list(cert_filenames)
+            certification_locations=list(cert_locations)
         ) 
         
         # 2. Generar el DOCX

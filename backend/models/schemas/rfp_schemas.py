@@ -56,6 +56,11 @@ class QuestionPriorityEnum(str, Enum):
 
 # ============ RFP SCHEMAS ============
 
+class RecommendedISO(BaseModel):
+    """Recommended ISO certification."""
+    id: str
+    level: str  # high, medium, low
+
 class RFPBase(BaseModel):
     """Base schema for RFP."""
     file_name: str
@@ -119,6 +124,7 @@ class RFPDetail(RFPSummary):
     questions_deadline: date | None = None
     project_duration: str | None = None
     confidence_score: int | None = None
+    recommended_isos: list[RecommendedISO] | None = None
     decision_reason: str | None = None
     decided_at: datetime | None = None
     updated_at: datetime
@@ -190,6 +196,9 @@ class RiskItem(BaseModel):
     severity: str = "medium"  # low, medium, high, critical
 
 
+
+
+
 class ExtractedRFPData(BaseModel):
     """Complete extracted data from RFP analysis."""
     # Basic info
@@ -220,6 +229,9 @@ class ExtractedRFPData(BaseModel):
     recommendation: str | None = None
     recommendation_reasons: list[str] = []
     confidence_score: int | None = None
+    
+    # Certifications
+    recommended_isos: list[RecommendedISO] = []
 
 
 # ============ UPLOAD RESPONSE ============

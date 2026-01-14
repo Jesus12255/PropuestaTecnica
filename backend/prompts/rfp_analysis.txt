@@ -65,25 +65,30 @@ Segun el escenario:
 5. Agregar margen operativo (20%)
 6. Proponer presupuesto
 
+## PASO 4: CERTIFICACIONES RECOMENDADAS
+
+TIVIT cuenta con las siguientes certificaciones y experiencias activas:
+{{available_certifications}}
+
+Analiza cuáles de estas certificaciones son RELEVANTES para este RFP específico.
+Un certificado es relevante si:
+- Es requerido explícitamente en el documento.
+- Es deseable o valorado en la industria del cliente (ej: ISO 27001 para banca).
+- Demuestra experiencia en tecnologías o dominios solicitados.
+
+Clasifica la relevancia como "high", "medium", o "low".
+
 ## RESPUESTA JSON
 
 Responde SOLO con un JSON valido (sin markdown, sin explicaciones) con este formato:
 
 {
-<<<<<<< HEAD
-  "client_name": "Nombre del cliente",
-  "country": "Pais del RFP",
-  "summary": "Resumen del proyecto en 2-3 oraciones",
-  "category": "desarrollo_software | mantencion_aplicaciones | analitica | ia_chatbot | ia_documentos | ia_video | otro",
-=======
   "title": "Título oficial del proyecto o licitación",
   "client_name": "string | null - Nombre del cliente/empresa",
   "client_acronym": "Siglas o abreviatura del cliente (ej: BCP, INDAP, BBVA)",
   "country": "string | null - País de origen del RFP",
   "summary": "string | null - Resumen/objetivo del proyecto (máximo 200 palabras)",
   "category": "string | null - Una de: mantencion_aplicaciones, desarrollo_software, analitica, ia_chatbot, ia_documentos, ia_video, otro",
->>>>>>> 5eb08570903cc796dd9982062a4e066fcc1b45bb
-  
   "budget": {
     "amount_min": null,
     "amount_max": null,
@@ -188,7 +193,13 @@ Responde SOLO con un JSON valido (sin markdown, sin explicaciones) con este form
     "Stack tecnologico conocido por TIVIT",
     "Cliente estrategico"
   ],
-  "confidence_score": 75
+  "confidence_score": 75,
+  "recommended_isos": [
+    {
+      "id": "uuid-referencia-certificacion",
+      "level": "high | medium | low"
+    }
+  ]
 }
 
 ## REGLAS IMPORTANTES
