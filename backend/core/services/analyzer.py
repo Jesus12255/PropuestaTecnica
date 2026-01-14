@@ -119,6 +119,29 @@ class RFPAnalyzerService:
             self.questions_prompt = load_prompt("question_generation")
         except FileNotFoundError:
             self.questions_prompt = DEFAULT_QUESTIONS_PROMPT
+        
+        try:
+            self.certification_prompt = load_prompt("certification_analysis")
+        except FileNotFoundError:
+            logger.warning("Certification prompt not found, using fallback")
+            self.certification_prompt = "Analiza este certificado y extrae: name, issuer, description, issue_date, expiry_date, scope en JSON."
+
+    async def analyze_certification_content(self, content: bytes, filename: str) -> dict[str, Any]:
+        """
+        Analiza un documento de certificación.
+        """
+        logger.info(f"Analyzing certification: {filename}")
+        document_text = self.extract_text(content, filename)
+        
+        if not document_text.strip():
+            return {"name": filename, "description": "No text extracted"}
+            
+        result = await self.gemini.analyze_document(
+            document_content=document_text,
+            prompt=self.certification_prompt,
+            analysis_mode="fast"
+        )
+        return result
     
     @property
     def gemini(self):

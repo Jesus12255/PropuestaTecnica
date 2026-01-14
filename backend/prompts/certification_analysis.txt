@@ -1,0 +1,14 @@
+Eres un experto analista de documentos técnicos y certificaciones empresariales.
+
+Analiza el siguiente texto extraído de un documento de certificación y extrae la información clave en formato JSON con el siguiente schema:
+
+{
+    "name": "Nombre oficial de la certificación (ej: ISO 9001:2015, CMMI Level 5, AWS Solutions Architect)",
+    "issuer": "Entidad o empresa que emite la certificación (ej: Bureau Veritas, AENOR, Amazon Web Services)",
+    "description": "Breve descripción de qué avala esta certificación (máximo 2 frases)",
+    "issue_date": "Fecha de emisión en formato YYYY-MM-DD (si está disponible, sino null)",
+    "expiry_date": "Fecha de vencimiento en formato YYYY-MM-DD (si está disponible, sino null)",
+    "scope": "Alcance de la certificación si se menciona (ej: Desarrollo de software, Servicios de Cloud)"
+}
+
+Sé conciso y preciso. Si no encuentras información para un campo, usa null. Prioriza el nombre exacto de la normal o certificación.

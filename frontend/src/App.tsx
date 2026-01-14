@@ -12,6 +12,7 @@ import RFPDetailPage from './pages/RFPDetailPage';
 import QuestionsPage from './pages/QuestionsPage';
 import RFPListPage from './pages/RFPListPage';
 import SettingsPage from './pages/SettingsPage';
+import CertificationsPage from './pages/CertificationsPage';
 
 // Componente para rutas protegidas
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -19,10 +20,10 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
   if (isLoading) {
     return (
-      <div style={{ 
-        minHeight: '100vh', 
-        display: 'flex', 
-        alignItems: 'center', 
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
         justifyContent: 'center',
         background: '#f5f5f5',
       }}>
@@ -44,10 +45,10 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   if (isLoading) {
     return (
-      <div style={{ 
-        minHeight: '100vh', 
-        display: 'flex', 
-        alignItems: 'center', 
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
         justifyContent: 'center',
         background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
       }}>
@@ -86,7 +87,7 @@ const App: React.FC = () => {
             </ProtectedRoute>
           }
         />
-        
+
         {/* Listas de RFPs */}
         <Route
           path="/rfps"
@@ -120,7 +121,7 @@ const App: React.FC = () => {
             </ProtectedRoute>
           }
         />
-        
+
         {/* Detalle RFP */}
         <Route
           path="/rfp/:id"
@@ -138,7 +139,17 @@ const App: React.FC = () => {
             </ProtectedRoute>
           }
         />
-        
+
+        {/* Certificaciones */}
+        <Route
+          path="/certifications"
+          element={
+            <ProtectedRoute>
+              <CertificationsPage />
+            </ProtectedRoute>
+          }
+        />
+
         {/* Configuración */}
         <Route
           path="/settings"

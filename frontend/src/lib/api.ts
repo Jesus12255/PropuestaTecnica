@@ -16,7 +16,10 @@ import type {
   TeamSuggestionResponse,
   TeamEstimation,
   CostEstimation,
+  CostEstimation,
   SuggestedTeam,
+  Certification,
+  CertificationUploadResponse,
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
@@ -24,9 +27,6 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/
 // Crear instancia de axios
 const api: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
 });
 
 // Interceptor para añadir token
@@ -136,12 +136,8 @@ export const rfpApi = {
   upload: async (file: File): Promise<UploadResponse> => {
     const formData = new FormData();
     formData.append('file', file);
-    
-    const { data } = await api.post<UploadResponse>('/rfp/upload', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+
+    const { data } = await api.post<UploadResponse>('/rfp/upload', formData);
     return data;
   },
 
@@ -188,6 +184,24 @@ export const rfpApi = {
       cost_estimation: CostEstimation | null;
       suggested_team: SuggestedTeam | null;
     }>(`/rfp/${id}/team-estimation`);
+    return data;
+  },
+};
+
+// ============ CERTIFICATIONS ============
+
+export const certificationsApi = {
+  list: async (): Promise<Certification[]> => {
+    const { data } = await api.get<Certification[]>('/certifications/');
+    return data;
+  },
+
+  upload: async (file: File): Promise<CertificationUploadResponse> => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    // Note: The backend endpoint is /certifications/save
+    const { data } = await api.post<CertificationUploadResponse>('/certifications/save', formData);
     return data;
   },
 };

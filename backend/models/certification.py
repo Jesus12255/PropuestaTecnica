@@ -23,8 +23,9 @@ class Certification(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     
-    # Nombre del archivo .docx en templates/certs/ (ej: iso9001.docx)
     filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    
+    location: Mapped[str | None] = mapped_column(String(512), nullable=True)
     
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     

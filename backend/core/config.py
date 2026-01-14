@@ -25,15 +25,19 @@ class Settings(BaseSettings):
     )
     
     # GCP Settings
-    GCP_PROJECT_ID: str = Field(default="", description="Google Cloud Project ID")
+    GCP_PROJECT_ID: str = Field(default="squad-ia-latam", description="Google Cloud Project ID")
     GCP_LOCATION: str = Field(default="us-central1", description="GCP Region")
-    GCS_BUCKET: str = Field(default="", description="Cloud Storage bucket for RFP files")
+    GCS_BUCKET: str = Field(default="caso01-documents", description="Cloud Storage bucket for RFP files")
     
     # GCP Credentials (Service Account JSON path - for Cloud Storage)
-    GOOGLE_APPLICATION_CREDENTIALS: str = Field(
-        default="/app/gcp-credentials.json",
-        description="Path to GCP service account JSON file"
+    GOOGLE_APPLICATION_CREDENTIALS: str | None = Field(
+        default=None, 
+        description="Path to GCP service account JSON file (optional if using env vars)"
     )
+    
+    # GCP Credentials (Environment Variables)
+    GCP_CLIENT_EMAIL: str = Field(default="", description="GCP Service Account Email")
+    GCP_PRIVATE_KEY: str = Field(default="", description="GCP Private Key")
     
     # Google AI API Key (for Gemini)
     GOOGLE_API_KEY: str = Field(
