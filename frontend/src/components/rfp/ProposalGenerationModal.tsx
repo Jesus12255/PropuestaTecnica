@@ -3,7 +3,7 @@ import { Modal, Button, List, Typography, Tag, Skeleton, Divider, Result, Checkb
 import { useQuery } from '@tanstack/react-query';
 import { rfpApi, certificationsApi, proposalApi } from '../../lib/api';
 import { FilePdfOutlined, SearchOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
-import type { Certification } from '../../types';
+
 
 const { Title, Text, Paragraph } = Typography;
 
