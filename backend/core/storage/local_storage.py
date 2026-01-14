@@ -29,8 +29,10 @@ class LocalStorageService:
         if base_path:
             self.base_path = Path(base_path)
         else:
-            # Usar variable de entorno o default
-            upload_dir = os.getenv("LOCAL_STORAGE_PATH", "/app/uploads")
+            # Usar variable de entorno o default (temp dir para Vercel)
+            import tempfile
+            default_dir = os.path.join(tempfile.gettempdir(), "propuesta_tecnica_uploads")
+            upload_dir = os.getenv("LOCAL_STORAGE_PATH", default_dir)
             self.base_path = Path(upload_dir)
         
         # Crear directorio si no existe
