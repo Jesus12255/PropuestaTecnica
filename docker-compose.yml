@@ -38,8 +38,8 @@ services:
     ports:
       - "8000:8000"
     environment:
-      # Database
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-rfp_user}:${POSTGRES_PASSWORD:-rfp_password}@postgres:5432/${POSTGRES_DB:-rfp_analyzer}
+      # Database (Supabase Cloud)
+      DATABASE_URL: ${DATABASE_URL}
       
       # App
       DEBUG: ${DEBUG:-true}
@@ -66,9 +66,6 @@ services:
       - ./backend:/app
       - ./gcp-credentials.json:/app/gcp-credentials.json:ro
       - rfp_uploads:/app/uploads
-    depends_on:
-      postgres:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
