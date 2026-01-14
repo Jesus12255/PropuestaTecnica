@@ -13,6 +13,22 @@ from .rfp_schemas import (
     RFPListResponse,
     ExtractedRFPData,
     UploadResponse,
+    # Team & Cost Estimation
+    ScenarioEnum,
+    SeniorityEnum,
+    DedicationEnum,
+    ViabilityEnum,
+    MarketRate,
+    RoleEstimation,
+    TeamEstimation,
+    CostBreakdownItem,
+    ViabilityAnalysis,
+    CostEstimation,
+    MCPCandidate,
+    MCPRoleResult,
+    SuggestedTeam,
+    TeamSuggestionRequest,
+    TeamSuggestionResponse,
 )
 
 __all__ = [
@@ -29,4 +45,20 @@ __all__ = [
     "RFPListResponse",
     "ExtractedRFPData",
     "UploadResponse",
+    # Team & Cost Estimation
+    "ScenarioEnum",
+    "SeniorityEnum",
+    "DedicationEnum",
+    "ViabilityEnum",
+    "MarketRate",
+    "RoleEstimation",
+    "TeamEstimation",
+    "CostBreakdownItem",
+    "ViabilityAnalysis",
+    "CostEstimation",
+    "MCPCandidate",
+    "MCPRoleResult",
+    "SuggestedTeam",
+    "TeamSuggestionRequest",
+    "TeamSuggestionResponse",
 ]

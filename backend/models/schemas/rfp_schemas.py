@@ -230,3 +230,158 @@ class UploadResponse(BaseModel):
     file_name: str
     status: RFPStatusEnum
     message: str = "RFP uploaded successfully. Analysis in progress."
+
+
+# ============ TEAM & COST ESTIMATION SCHEMAS ============
+
+class ScenarioEnum(str, Enum):
+    """Los 4 escenarios de estimacion."""
+    A = "A"  # Personal + Presupuesto -> Validar viabilidad
+    B = "B"  # Sin Personal + Presupuesto -> IA sugiere equipo
+    C = "C"  # Personal + Sin Presupuesto -> Estimar presupuesto
+    D = "D"  # Sin Personal + Sin Presupuesto -> IA sugiere todo
+
+
+class SeniorityEnum(str, Enum):
+    JUNIOR = "junior"
+    MID = "mid"
+    SENIOR = "senior"
+    LEAD = "lead"
+
+
+class DedicationEnum(str, Enum):
+    FULL_TIME = "full_time"
+    PART_TIME = "part_time"
+
+
+class ViabilityEnum(str, Enum):
+    VIABLE = "viable"
+    UNDER_BUDGET = "under_budget"
+    OVER_BUDGET = "over_budget"
+    NEEDS_REVIEW = "needs_review"
+
+
+class MarketRate(BaseModel):
+    """Tarifa de mercado obtenida via grounding."""
+    min: float
+    max: float
+    average: float
+    currency: str = "USD"
+    period: str = "monthly"
+    source: str | None = None  # Ej: "Glassdoor, LinkedIn Salary"
+
+
+class RoleEstimation(BaseModel):
+    """Estimacion de un rol individual."""
+    role_id: str
+    title: str
+    quantity: int = 1
+    seniority: SeniorityEnum = SeniorityEnum.SENIOR
+    required_skills: list[str] = []
+    required_certifications: list[str] = []
+    dedication: DedicationEnum = DedicationEnum.FULL_TIME
+    duration_months: int | None = None
+    market_rate: MarketRate | None = None
+    subtotal_monthly: float | None = None
+    justification: str | None = None
+
+
+class TeamEstimation(BaseModel):
+    """Estimacion completa del equipo."""
+    source: str  # "client_specified" o "ai_estimated"
+    scenario: ScenarioEnum
+    confidence: float = 0.0  # 0-1
+    roles: list[RoleEstimation] = []
+    total_headcount: int = 0
+    rationale: str | None = None
+
+
+class CostBreakdownItem(BaseModel):
+    """Item de desglose de costos."""
+    role: str
+    quantity: int
+    monthly_rate: float
+    subtotal: float
+
+
+class ViabilityAnalysis(BaseModel):
+    """Analisis de viabilidad presupuestaria."""
+    client_budget: float | None = None
+    required_budget: float
+    gap: float = 0.0
+    gap_percent: float = 0.0
+    is_viable: bool = True
+    assessment: ViabilityEnum = ViabilityEnum.VIABLE
+    recommendations: list[str] = []
+
+
+class CostEstimation(BaseModel):
+    """Estimacion completa de costos."""
+    scenario: ScenarioEnum
+    scenario_description: str | None = None
+    
+    # Costo del equipo
+    monthly_base: float = 0.0
+    currency: str = "USD"
+    source: str = "grounding"  # o "estimated"
+    breakdown: list[CostBreakdownItem] = []
+    
+    # Margen (solo para escenarios C y D)
+    margin_percent: float = 20.0
+    margin_amount: float = 0.0
+    
+    # Presupuesto sugerido (solo para escenarios C y D)
+    suggested_monthly: float | None = None
+    duration_months: int | None = None
+    suggested_total: float | None = None
+    
+    # Analisis de viabilidad (solo para escenarios A y B)
+    viability: ViabilityAnalysis | None = None
+
+
+class MCPCandidate(BaseModel):
+    """Candidato retornado por MCP."""
+    matricula: str
+    nombre: str
+    email: str
+    cargo: str
+    pais: str | None = None
+    score: float = 0.0
+    match_principal: str | None = None
+    certificaciones: list[dict] = []
+    skills: list[dict] = []
+    lider: dict | None = None
+
+
+class MCPRoleResult(BaseModel):
+    """Resultado de MCP para un rol."""
+    rol_id: str
+    descripcion: str
+    candidatos: list[MCPCandidate] = []
+    total: int = 0
+
+
+class SuggestedTeam(BaseModel):
+    """Equipo sugerido con candidatos reales de MCP."""
+    generated_at: str | None = None
+    mcp_available: bool = True
+    resultados: dict[str, MCPRoleResult] = {}
+    total_roles: int = 0
+    total_candidatos: int = 0
+    coverage_percent: float = 0.0  # % de roles con al menos 1 candidato
+
+
+class TeamSuggestionRequest(BaseModel):
+    """Request para sugerir equipo."""
+    force_refresh: bool = False  # Forzar nueva busqueda en MCP
+
+
+class TeamSuggestionResponse(BaseModel):
+    """Response con estimacion de equipo, costos y candidatos."""
+    rfp_id: UUID
+    scenario: ScenarioEnum
+    team_estimation: TeamEstimation
+    cost_estimation: CostEstimation
+    suggested_team: SuggestedTeam | None = None
+    message: str | None = None
+

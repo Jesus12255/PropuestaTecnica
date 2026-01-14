@@ -13,6 +13,10 @@ import type {
   RFPQuestion,
   RFPDecision,
   UploadResponse,
+  TeamSuggestionResponse,
+  TeamEstimation,
+  CostEstimation,
+  SuggestedTeam,
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
@@ -158,6 +162,33 @@ export const rfpApi = {
 
   delete: async (id: string): Promise<void> => {
     await api.delete(`/rfp/${id}`);
+  },
+
+  /**
+   * Busca candidatos del equipo usando MCP Talent Search
+   * @param id - ID del RFP
+   * @param forceRefresh - Si es true, vuelve a consultar MCP aunque ya existan resultados
+   */
+  suggestTeam: async (id: string, forceRefresh?: boolean): Promise<TeamSuggestionResponse> => {
+    const params = forceRefresh ? { force_refresh: true } : {};
+    const { data } = await api.post<TeamSuggestionResponse>(`/rfp/${id}/suggest-team`, null, { params });
+    return data;
+  },
+
+  /**
+   * Obtiene la estimación de equipo y costos guardada para un RFP
+   */
+  getTeamEstimation: async (id: string): Promise<{
+    team_estimation: TeamEstimation | null;
+    cost_estimation: CostEstimation | null;
+    suggested_team: SuggestedTeam | null;
+  }> => {
+    const { data } = await api.get<{
+      team_estimation: TeamEstimation | null;
+      cost_estimation: CostEstimation | null;
+      suggested_team: SuggestedTeam | null;
+    }>(`/rfp/${id}/team-estimation`);
+    return data;
   },
 };
 
