@@ -44,9 +44,15 @@ export type RFPCategory =
 
 export type Recommendation = 'strong_go' | 'go' | 'conditional_go' | 'no_go' | 'strong_no_go';
 
+export interface RecommendedISO {
+  id: string;
+  level: 'high' | 'medium' | 'low';
+}
+
 export interface RFPSummary {
   id: string;
   file_name: string;
+  title: string | null;
   status: RFPStatus;
   client_name: string | null;
   country: string | null;
@@ -82,6 +88,7 @@ export interface RFPDetail extends RFPSummary {
   questions_deadline: string | null;
   project_duration: string | null;
   confidence_score: number | null;
+  recommended_isos: RecommendedISO[] | null;
   decision_reason: string | null;
   decided_at: string | null;
   updated_at: string;
@@ -130,6 +137,7 @@ export interface ExtractedRFPData {
   recommendation: Recommendation | null;
   recommendation_reasons: string[];
   confidence_score: number | null;
+  recommended_isos?: RecommendedISO[];
 }
 
 // ============ DASHBOARD ============

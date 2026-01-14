@@ -3,16 +3,18 @@
  */
 import React, { useState } from 'react';
 import { Layout, Typography, Button, Space, Input, Select, Table, Tag, Tooltip } from 'antd';
-import { 
-  ReloadOutlined, 
+import {
+  ReloadOutlined,
   PlusOutlined,
   EyeOutlined,
   DownloadOutlined,
+  FilePdfOutlined,
 } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { rfpApi } from '../lib/api';
 import UploadModal from '../components/dashboard/UploadModal';
+import ProposalGenerationModal from '../components/rfp/ProposalGenerationModal';
 import AppLayout from '../components/layout/AppLayout';
 import type { ColumnsType } from 'antd/es/table';
 
@@ -26,6 +28,8 @@ interface RFPListPageProps {
 const RFPListPage: React.FC<RFPListPageProps> = ({ filterStatus = 'all' }) => {
   const navigate = useNavigate();
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [generationModalOpen, setGenerationModalOpen] = useState(false);
+  const [selectedRfpId, setSelectedRfpId] = useState<string | null>(null);
   const [searchText, setSearchText] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string | undefined>();
   const [page, setPage] = useState(1);
@@ -138,7 +142,7 @@ const RFPListPage: React.FC<RFPListPageProps> = ({ filterStatus = 'all' }) => {
       dataIndex: 'confidence_score',
       key: 'confidence_score',
       width: 100,
-      render: (score: number | null) => 
+      render: (score: number | null) =>
         score ? <Tag color={score >= 70 ? 'green' : score >= 40 ? 'orange' : 'red'}>{score}%</Tag> : '-',
     },
     {
@@ -146,7 +150,7 @@ const RFPListPage: React.FC<RFPListPageProps> = ({ filterStatus = 'all' }) => {
       dataIndex: 'proposal_deadline',
       key: 'proposal_deadline',
       width: 120,
-      render: (date: string | null) => 
+      render: (date: string | null) =>
         date ? new Date(date).toLocaleDateString('es-CL') : '-',
     },
     {
@@ -163,18 +167,38 @@ const RFPListPage: React.FC<RFPListPageProps> = ({ filterStatus = 'all' }) => {
       fixed: 'right',
       render: (_: any, record: any) => (
         <Space>
+          {record.status === 'go' && (
+            <Tooltip title="Generar Propuesta">
+              <Button
+                type="text"
+                style={{ color: '#1890ff' }}
+                icon={<FilePdfOutlined />}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedRfpId(record.id);
+                  setGenerationModalOpen(true);
+                }}
+              />
+            </Tooltip>
+          )}
           <Tooltip title="Ver detalle">
             <Button
               type="text"
               icon={<EyeOutlined />}
-              onClick={() => navigate(`/rfp/${record.id}`)}
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/rfp/${record.id}`);
+              }}
             />
           </Tooltip>
           <Tooltip title="Descargar">
             <Button
               type="text"
               icon={<DownloadOutlined />}
-              onClick={() => window.open(`/api/v1/rfp/${record.id}/download`, '_blank')}
+              onClick={(e) => {
+                e.stopPropagation();
+                window.open(`/api/v1/rfp/${record.id}/download`, '_blank');
+              }}
             />
           </Tooltip>
         </Space>
@@ -196,9 +220,9 @@ const RFPListPage: React.FC<RFPListPageProps> = ({ filterStatus = 'all' }) => {
     <AppLayout>
       <Content style={{ padding: '24px', minHeight: '100vh' }}>
         {/* Header */}
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
           alignItems: 'center',
           marginBottom: 24,
         }}>
@@ -206,8 +230,8 @@ const RFPListPage: React.FC<RFPListPageProps> = ({ filterStatus = 'all' }) => {
             {getTitle()}
           </Title>
           <Space>
-            <Button 
-              icon={<ReloadOutlined />} 
+            <Button
+              icon={<ReloadOutlined />}
               onClick={() => refetch()}
             >
               Actualizar
@@ -223,9 +247,9 @@ const RFPListPage: React.FC<RFPListPageProps> = ({ filterStatus = 'all' }) => {
         </div>
 
         {/* Filters */}
-        <div style={{ 
-          display: 'flex', 
-          gap: 16, 
+        <div style={{
+          display: 'flex',
+          gap: 16,
           marginBottom: 16,
           flexWrap: 'wrap',
         }}>
@@ -247,7 +271,7 @@ const RFPListPage: React.FC<RFPListPageProps> = ({ filterStatus = 'all' }) => {
             allowClear
           />
           {(searchText || categoryFilter) && (
-            <Button 
+            <Button
               onClick={() => {
                 setSearchText('');
                 setCategoryFilter(undefined);
@@ -286,6 +310,15 @@ const RFPListPage: React.FC<RFPListPageProps> = ({ filterStatus = 'all' }) => {
           open={uploadModalOpen}
           onCancel={() => setUploadModalOpen(false)}
           onSuccess={handleUploadSuccess}
+        />
+
+        <ProposalGenerationModal
+          rfpId={selectedRfpId}
+          open={generationModalOpen}
+          onCancel={() => {
+            setGenerationModalOpen(false);
+            setSelectedRfpId(null);
+          }}
         />
       </Content>
     </AppLayout>

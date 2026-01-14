@@ -3,6 +3,8 @@ Service to generate Technical Proposal documents.
 Uses Jinja2 for templating and htmldocx for HTML -> DOCX conversion.
 """
 import logging
+import tempfile
+import os
 from datetime import datetime
 from pathlib import Path
 from io import BytesIO
@@ -11,6 +13,7 @@ from io import BytesIO
 from docxtpl import DocxTemplate
 
 from utils.constantes import Constantes
+from core.storage.hybrid_storage import get_storage_service
 
 logger = logging.getLogger(__name__)
 
@@ -23,11 +26,13 @@ class ProposalGeneratorService:
     def __init__(self):
         self.template_path = TEMPLATES_DIR / "tivit_proposal_template.docx"
         self.certifications_dir = TEMPLATES_DIR / "certs"
+        self.storage_service = get_storage_service()
 
     def generate_docx(self, context: dict) -> BytesIO:
         """
         Fills the Word template with data.
         """
+        temp_files = []
         try:
             if not self.template_path.exists():
                 raise FileNotFoundError(f"No se encontró la plantilla en {self.template_path}")
@@ -35,16 +40,33 @@ class ProposalGeneratorService:
             doc = DocxTemplate(self.template_path)
             
             # Process subdocs if present
-            cert_filenames = context.pop("_certification_filenames", [])
+            cert_locations = context.pop("_certification_locations", [])
             cert_subdocs = []
             
-            for fname in cert_filenames:
-                sub_path = self.certifications_dir / fname
-                if sub_path.exists():
-                    sd = doc.new_subdoc(sub_path)
+            for uri in cert_locations:
+                try:
+                    # Create a temporary file
+                    # delete=False because we need to close it before docxtpl reads it (on Windows especially)
+                    fd, temp_path = tempfile.mkstemp(suffix=".docx")
+                    os.close(fd)
+                    temp_files.append(temp_path)
+                    
+                    logger.info(f"Downloading certification from {uri} to {temp_path}")
+                    
+                    # Download file content
+                    content = self.storage_service.download_file(uri)
+                    
+                    # Write to temp file
+                    with open(temp_path, "wb") as f:
+                        f.write(content)
+                        
+                    # Create subdoc
+                    sd = doc.new_subdoc(temp_path)
                     cert_subdocs.append(sd)
-                else:
-                    logger.warning(f"Certification file not found: {sub_path}")
+                    
+                except Exception as e:
+                    logger.error(f"Error processing certification {uri}: {e}")
+                    # Continue with other certifications even if one fails
             
             # Pass the list (even if empty) so the template loop works
             context["certifications_section"] = cert_subdocs
@@ -60,17 +82,24 @@ class ProposalGeneratorService:
         except Exception as e:
             logger.error(f"Error generating DOCX from template: {e}")
             raise
+        finally:
+            # Cleanup temp files
+            for path in temp_files:
+                try:
+                    if os.path.exists(path):
+                        os.unlink(path)
+                except Exception as e:
+                    logger.warning(f"Failed to delete temp file {path}: {e}")
 
 
 
-    def prepare_context(self, rfp_data: dict, user_name: str = "", certification_filenames: list[str] = []) -> dict:
+    def prepare_context(self, rfp_data: dict, user_name: str = "", certification_locations: list[str] = []) -> dict:
         data = rfp_data.get("extracted_data", {}) or {}
 
         country = data.get("country", "").lower()
         sede_tivit = "TIVIT Latam"
         direccion_tivit = "Dirección General"
         
-        # ... (country logic unchanged) ...
         if Constantes.Countries.PERU in country:
             sede_tivit = "TIVIT Perú Tercerización de Procesos, Servicios y Tecnología S.A.C."
             direccion_tivit = "Av. Antonio Miró Quesada 425, Piso 18, Oficina 1811, Magdalena del Mar, Lima, Perú"
@@ -90,12 +119,6 @@ class ProposalGeneratorService:
             sede_tivit = "TIVIT Ecuador Cía. Ltda."
             direccion_tivit = "Av. República de El Salvador N34-127 y Suiza, Edificio Murano, Piso 9, Quito, Ecuador"
 
-        # Prepare Subdocs for certifications
-        cert_subdocs = []
-        # We need an instance of doc for subdoc, but we don't have it here yet.
-        # Actually docxtpl strategy: prepare data here, but Subdoc requires the 'doc' object.
-        # So we should pass the filenames in context, and create Subdocs inside generate_docx where 'doc' exists.
-        
         context = {
             "title": data.get("title", "Propuesta de Servicios TIVIT"),
             "client_acronym": data.get("client_acronym", ""),
@@ -105,8 +128,8 @@ class ProposalGeneratorService:
             "country": country,
             "current_user_name": user_name,
             "summary": data.get("summary", ""),
-            # Pass filenames to be processed later
-            "_certification_filenames": certification_filenames
+            # Pass locations to be processed later
+            "_certification_locations": certification_locations
         }
         
         # Mezclar todo por si acaso

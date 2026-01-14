@@ -206,4 +206,17 @@ export const certificationsApi = {
   },
 };
 
+// ============ PROPOSAL GENERATION ============
+
+export const proposalApi = {
+  generate: async (rfpId: string, certificationIds: string[]): Promise<Blob> => {
+    const { data } = await api.post(
+      '/proposal/generate',
+      { rfp_id: rfpId, certification_ids: certificationIds },
+      { responseType: 'blob' } // Important for downloading files
+    );
+    return data;
+  },
+};
+
 export default api;

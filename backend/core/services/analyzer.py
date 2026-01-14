@@ -13,6 +13,9 @@ from docx import Document
 import io
 
 from core.gcp.gemini_client import get_gemini_client
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from models.certification import Certification
 
 logger = logging.getLogger(__name__)
 
@@ -203,6 +206,7 @@ class RFPAnalyzerService:
         filename: str,
         analysis_mode: Literal["fast", "balanced", "deep"] = "balanced",
         use_grounding: bool = True,
+        db: AsyncSession | None = None,
     ) -> dict[str, Any]:
         """
         Analiza un RFP desde su contenido en bytes.
@@ -212,6 +216,7 @@ class RFPAnalyzerService:
             filename: Nombre del archivo (para determinar tipo)
             analysis_mode: Modo de análisis (fast/balanced/deep)
             use_grounding: Si True, usa Google Search para tarifas de mercado
+            db: Sesión de base de datos para obtener certificaciones
             
         Returns:
             Datos extraídos del RFP incluyendo team_estimation y cost_estimation
@@ -228,32 +233,53 @@ class RFPAnalyzerService:
         
         logger.info(f"Extracted {len(document_text)} characters from document")
         
+        # Preparar prompt con certificaciones si hay DB
+        prompt_to_use = self.analysis_prompt
+        
+        if db:
+            try:
+                # Obtener certificaciones activas
+                result = await db.execute(select(Certification).where(Certification.is_active == True))
+                certs = result.scalars().all()
+                if certs:
+                    cert_list_str = "\n".join([f"- {c.name} (ID: {c.id}): {c.description[:100]}..." for c in certs])
+                    prompt_to_use = prompt_to_use.replace("{{available_certifications}}", cert_list_str)
+                    logger.info(f"Injected {len(certs)} certifications into prompt")
+                else:
+                    prompt_to_use = prompt_to_use.replace("{{available_certifications}}", "No hay certificaciones disponibles.")
+            except Exception as e:
+                logger.error(f"Error fetching certifications for prompt: {e}")
+                prompt_to_use = prompt_to_use.replace("{{available_certifications}}", "Error al recuperar certificaciones.")
+        else:
+            prompt_to_use = prompt_to_use.replace("{{available_certifications}}", "No disponible (sin conexión a DB).")
+
         # Analizar con Gemini - usar grounding si está habilitado
         if use_grounding:
             logger.info("Using Gemini with Google Search Grounding for market rates")
             result = await self.gemini.analyze_with_grounding(
                 document_content=document_text,
-                prompt=self.analysis_prompt,
+                prompt=prompt_to_use,
                 temperature=0.1,
                 max_output_tokens=16384,
             )
         else:
             result = await self.gemini.analyze_document(
                 document_content=document_text,
-                prompt=self.analysis_prompt,
+                prompt=prompt_to_use,
                 analysis_mode=analysis_mode,
             )
         
         logger.info(f"RFP analysis completed: {result}")
         return result
     
-    async def analyze_rfp(self, gcs_uri: str, use_grounding: bool = True) -> dict[str, Any]:
+    async def analyze_rfp(self, gcs_uri: str, use_grounding: bool = True, db: AsyncSession | None = None) -> dict[str, Any]:
         """
         Analiza un RFP desde GCS o local.
         
         Args:
             gcs_uri: URI del archivo en Cloud Storage o local://
             use_grounding: Si True, usa Google Search para tarifas de mercado
+            db: Sesión de DB opcional
             
         Returns:
             Datos extraídos del RFP
@@ -269,7 +295,8 @@ class RFPAnalyzerService:
             return await self.analyze_rfp_from_content(
                 content, 
                 filename, 
-                use_grounding=use_grounding
+                use_grounding=use_grounding,
+                db=db
             )
         
         # Para GCS, descargar y analizar
@@ -280,7 +307,8 @@ class RFPAnalyzerService:
         return await self.analyze_rfp_from_content(
             content, 
             filename, 
-            use_grounding=use_grounding
+            use_grounding=use_grounding,
+            db=db
         )
     
     async def generate_questions(self, rfp_data: dict[str, Any]) -> list[dict[str, Any]]:
