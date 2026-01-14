@@ -54,6 +54,9 @@ services:
       GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3-pro-preview}
       
+      # MCP Talent Search
+      MCP_TALENT_URL: http://mcp:8083
+      
       # JWT
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-super-secret-key-change-in-production}
       

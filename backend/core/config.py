@@ -44,7 +44,13 @@ class Settings(BaseSettings):
     # Gemini Settings
     GEMINI_MODEL: str = Field(
         default="gemini-3-pro-preview",
-        description="Gemini model to use (gemini-3-pro-preview, gemini-3-flash-preview, gemini-2.5-pro, gemini-2.5-flash)"
+        description="Gemini model to use (gemini-3-pro-preview es el más potente para análisis complejos)"
+    )
+    
+    # MCP Talent Search Server
+    MCP_TALENT_URL: str = Field(
+        default="http://localhost:8083",
+        description="URL of the MCP Talent Search Server"
     )
     
     # JWT Settings

@@ -5,16 +5,17 @@ import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Layout, Typography, Card, Descriptions, Tag, Button, Space, 
-  Spin, Modal, Input, message, Row, Col, Alert, Divider, List 
+  Spin, Modal, Input, message, Row, Col, Alert, Divider, List, Tabs 
 } from 'antd';
 import { 
   ArrowLeftOutlined, CheckOutlined, CloseOutlined, 
   ExclamationCircleOutlined, CalendarOutlined, DollarOutlined,
-  GlobalOutlined, CodeOutlined
+  GlobalOutlined, CodeOutlined, TeamOutlined, SearchOutlined, ReloadOutlined
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { rfpApi } from '../lib/api';
 import AppLayout from '../components/layout/AppLayout';
+import { TeamEstimationView, CostEstimationView, SuggestedTeamView } from '../components/rfp';
 import type { RFPStatus, Recommendation } from '../types';
 import dayjs from 'dayjs';
 
@@ -62,13 +63,27 @@ const RFPDetailPage: React.FC = () => {
   const queryClient = useQueryClient();
   const [noGoReason, setNoGoReason] = useState('');
   const [noGoModalOpen, setNoGoModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('summary');
 
+  // RFP data
   const { data: rfp, isLoading } = useQuery({
     queryKey: ['rfp', id],
     queryFn: () => rfpApi.get(id!),
     enabled: !!id,
   });
 
+  // Team estimation data
+  const { 
+    data: teamData, 
+    isLoading: teamDataLoading,
+    refetch: refetchTeamData 
+  } = useQuery({
+    queryKey: ['rfp-team-estimation', id],
+    queryFn: () => rfpApi.getTeamEstimation(id!),
+    enabled: !!id && rfp?.status !== 'pending' && rfp?.status !== 'analyzing',
+  });
+
+  // Decision mutation
   const decisionMutation = useMutation({
     mutationFn: ({ decision, reason }: { decision: 'go' | 'no_go'; reason?: string }) =>
       rfpApi.makeDecision(id!, { decision, reason }),
@@ -84,6 +99,19 @@ const RFPDetailPage: React.FC = () => {
     },
   });
 
+  // Suggest team mutation
+  const suggestTeamMutation = useMutation({
+    mutationFn: (forceRefresh: boolean = false) => rfpApi.suggestTeam(id!, forceRefresh),
+    onSuccess: (data) => {
+      message.success(`Se encontraron ${data.suggested_team?.total_candidatos || 0} candidatos`);
+      refetchTeamData();
+      setActiveTab('candidates');
+    },
+    onError: (error: any) => {
+      message.error(error.response?.data?.detail || 'Error al buscar candidatos');
+    },
+  });
+
   const handleGo = () => {
     decisionMutation.mutate({ decision: 'go' });
   };
@@ -96,6 +124,10 @@ const RFPDetailPage: React.FC = () => {
     decisionMutation.mutate({ decision: 'no_go', reason: noGoReason });
     setNoGoModalOpen(false);
     setNoGoReason('');
+  };
+
+  const handleSearchCandidates = (forceRefresh: boolean = false) => {
+    suggestTeamMutation.mutate(forceRefresh);
   };
 
   if (isLoading) {
@@ -120,69 +152,17 @@ const RFPDetailPage: React.FC = () => {
 
   const extracted = rfp.extracted_data;
 
-  return (
-    <AppLayout>
-      <Content style={{ padding: 24 }}>
-        {/* Header */}
-        <div style={{ marginBottom: 24 }}>
-          <Button 
-            icon={<ArrowLeftOutlined />} 
-            onClick={() => navigate('/')}
-            style={{ marginBottom: 16 }}
-          >
-            Volver
-          </Button>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <Title level={2} style={{ margin: 0 }}>
-                {rfp.client_name || rfp.file_name}
-              </Title>
-              <Space style={{ marginTop: 8 }}>
-                <Tag color={statusColors[rfp.status]}>{statusLabels[rfp.status]}</Tag>
-                {rfp.recommendation && (
-                  <Tag color={recommendationColors[rfp.recommendation]}>
-                    IA: {recommendationLabels[rfp.recommendation]}
-                  </Tag>
-                )}
-              </Space>
-            </div>
-            
-            {/* Decision Buttons */}
-            {rfp.status === 'analyzed' && !rfp.decision && (
-              <Space size="large">
-                <Button
-                  type="primary"
-                  size="large"
-                  icon={<CheckOutlined />}
-                  onClick={handleGo}
-                  loading={decisionMutation.isPending}
-                  style={{ background: '#52c41a', borderColor: '#52c41a' }}
-                >
-                  GO
-                </Button>
-                <Button
-                  danger
-                  size="large"
-                  icon={<CloseOutlined />}
-                  onClick={handleNoGo}
-                  loading={decisionMutation.isPending}
-                >
-                  NO GO
-                </Button>
-              </Space>
-            )}
-
-            {rfp.decision === 'go' && (
-              <Button 
-                type="primary" 
-                onClick={() => navigate(`/rfp/${id}/questions`)}
-              >
-                Ver Preguntas
-              </Button>
-            )}
-          </div>
-        </div>
-
+  // Tab items configuration
+  const tabItems = [
+    {
+      key: 'summary',
+      label: (
+        <span>
+          <GlobalOutlined />
+          Resumen
+        </span>
+      ),
+      children: (
         <Row gutter={24}>
           {/* Main Info */}
           <Col span={16}>
@@ -335,6 +315,156 @@ const RFPDetailPage: React.FC = () => {
             )}
           </Col>
         </Row>
+      ),
+    },
+    {
+      key: 'team',
+      label: (
+        <span>
+          <TeamOutlined />
+          Equipo Estimado
+        </span>
+      ),
+      children: (
+        <TeamEstimationView 
+          teamEstimation={teamData?.team_estimation || null} 
+          loading={teamDataLoading}
+        />
+      ),
+    },
+    {
+      key: 'costs',
+      label: (
+        <span>
+          <DollarOutlined />
+          Costos
+        </span>
+      ),
+      children: (
+        <CostEstimationView 
+          costEstimation={teamData?.cost_estimation || null} 
+          loading={teamDataLoading}
+        />
+      ),
+    },
+    {
+      key: 'candidates',
+      label: (
+        <span>
+          <SearchOutlined />
+          Candidatos TIVIT
+        </span>
+      ),
+      children: (
+        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+          {/* Search Candidates Button */}
+          <Card size="small">
+            <Space>
+              <Button
+                type="primary"
+                icon={<SearchOutlined />}
+                onClick={() => handleSearchCandidates(false)}
+                loading={suggestTeamMutation.isPending}
+                disabled={!teamData?.team_estimation}
+              >
+                Buscar Candidatos
+              </Button>
+              {teamData?.suggested_team && (
+                <Button
+                  icon={<ReloadOutlined />}
+                  onClick={() => handleSearchCandidates(true)}
+                  loading={suggestTeamMutation.isPending}
+                >
+                  Actualizar
+                </Button>
+              )}
+              {!teamData?.team_estimation && (
+                <Text type="secondary">
+                  Se requiere una estimación de equipo para buscar candidatos
+                </Text>
+              )}
+            </Space>
+          </Card>
+
+          <SuggestedTeamView 
+            suggestedTeam={teamData?.suggested_team || null} 
+            loading={suggestTeamMutation.isPending}
+          />
+        </Space>
+      ),
+    },
+  ];
+
+  return (
+    <AppLayout>
+      <Content style={{ padding: 24 }}>
+        {/* Header */}
+        <div style={{ marginBottom: 24 }}>
+          <Button 
+            icon={<ArrowLeftOutlined />} 
+            onClick={() => navigate('/')}
+            style={{ marginBottom: 16 }}
+          >
+            Volver
+          </Button>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <Title level={2} style={{ margin: 0 }}>
+                {rfp.client_name || rfp.file_name}
+              </Title>
+              <Space style={{ marginTop: 8 }}>
+                <Tag color={statusColors[rfp.status]}>{statusLabels[rfp.status]}</Tag>
+                {rfp.recommendation && (
+                  <Tag color={recommendationColors[rfp.recommendation]}>
+                    IA: {recommendationLabels[rfp.recommendation]}
+                  </Tag>
+                )}
+              </Space>
+            </div>
+            
+            {/* Decision Buttons */}
+            {rfp.status === 'analyzed' && !rfp.decision && (
+              <Space size="large">
+                <Button
+                  type="primary"
+                  size="large"
+                  icon={<CheckOutlined />}
+                  onClick={handleGo}
+                  loading={decisionMutation.isPending}
+                  style={{ background: '#52c41a', borderColor: '#52c41a' }}
+                >
+                  GO
+                </Button>
+                <Button
+                  danger
+                  size="large"
+                  icon={<CloseOutlined />}
+                  onClick={handleNoGo}
+                  loading={decisionMutation.isPending}
+                >
+                  NO GO
+                </Button>
+              </Space>
+            )}
+
+            {rfp.decision === 'go' && (
+              <Button 
+                type="primary" 
+                onClick={() => navigate(`/rfp/${id}/questions`)}
+              >
+                Ver Preguntas
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <Tabs 
+          activeKey={activeTab} 
+          onChange={setActiveTab}
+          items={tabItems}
+          size="large"
+        />
 
         {/* NO GO Modal */}
         <Modal

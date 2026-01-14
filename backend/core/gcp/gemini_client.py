@@ -19,24 +19,37 @@ from core.config import settings
 logger = logging.getLogger(__name__)
 
 
-# Precios por 1M de tokens (USD) - Gemini 3 (Enero 2026)
-# Fuente: https://ai.google.dev/pricing
+# Precios por 1M de tokens (USD) - Gemini 3 y 2.5 (Enero 2026)
+# Fuente: https://ai.google.dev/gemini-api/docs/pricing
 PRICING = {
+    # Gemini 3 - Modelos más recientes y potentes
     "gemini-3-pro-preview": {
-        "input": 1.25,      # $1.25 / 1M input tokens
-        "output": 10.00,    # $10.00 / 1M output tokens
-        "thinking": 3.50,   # $3.50 / 1M thinking tokens
+        "input": 2.00,      # $2.00 / 1M input tokens (<=200K), $4.00 (>200K)
+        "output": 12.00,    # $12.00 / 1M output tokens (<=200K), $18.00 (>200K)
+        "thinking": 12.00,  # Tokens de pensamiento incluidos en output
     },
     "gemini-3-flash-preview": {
-        "input": 0.15,      # $0.15 / 1M input tokens
-        "output": 0.60,     # $0.60 / 1M output tokens
-        "thinking": 0.30,   # $0.30 / 1M thinking tokens
+        "input": 0.50,      # $0.50 / 1M input tokens
+        "output": 3.00,     # $3.00 / 1M output tokens
+        "thinking": 3.00,   # Tokens de pensamiento incluidos en output
+    },
+    # Gemini 2.5 - Modelos estables
+    "gemini-2.5-pro-preview": {
+        "input": 1.25,      # $1.25 / 1M input tokens (<=200K), $2.50 (>200K)
+        "output": 10.00,    # $10.00 / 1M output tokens (<=200K), $15.00 (>200K)
+    },
+    "gemini-2.5-flash-preview": {
+        "input": 0.30,      # $0.30 / 1M input tokens
+        "output": 2.50,     # $2.50 / 1M output tokens
+    },
+    "gemini-2.0-flash": {
+        "input": 0.10,      # $0.10 / 1M input tokens
+        "output": 0.40,     # $0.40 / 1M output tokens
     },
     # Fallback para modelos no listados
     "default": {
-        "input": 1.25,
-        "output": 10.00,
-        "thinking": 3.50,
+        "input": 2.00,
+        "output": 12.00,
     }
 }
 
@@ -47,9 +60,13 @@ def calculate_cost(model: str, input_tokens: int, output_tokens: int, thinking_t
     
     cost = (
         (input_tokens / 1_000_000) * pricing["input"] +
-        (output_tokens / 1_000_000) * pricing["output"] +
-        (thinking_tokens / 1_000_000) * pricing["thinking"]
+        (output_tokens / 1_000_000) * pricing["output"]
     )
+    
+    # Thinking tokens solo para modelos que lo soporten (futuro)
+    if thinking_tokens > 0 and "thinking" in pricing:
+        cost += (thinking_tokens / 1_000_000) * pricing["thinking"]
+    
     return cost
 
 
@@ -167,7 +184,7 @@ ANALYSIS_MODES = {
     "fast": {
         "model": "gemini-3-flash-preview",
         "temperature": 0.2,
-        "max_output_tokens": 4096,
+        "max_output_tokens": 8192,
         "description": "Análisis rápido con Gemini 3 Flash",
     },
     "balanced": {
@@ -204,11 +221,14 @@ class GeminiClient:
         logger.info(f"Gemini client initialized with API Key")
         logger.info(f"Gemini model: {self.model_id}")
     
-    def _extract_json_from_text(self, text: str) -> Any:
+    def _extract_json_from_text(self, text: str | None) -> Any:
         """
         Extrae JSON válido de un texto que puede contener datos extra.
         Maneja casos donde Gemini devuelve JSON con texto adicional.
         """
+        if text is None:
+            raise ValueError("Response text is None - model may have returned empty response")
+        
         text = text.strip()
         
         # Primero intentar parsear directamente
@@ -587,6 +607,177 @@ Genera las preguntas en formato JSON como un array de objetos.
             consumption_tracker.add_log(log)
             
             logger.error(f"Error in chat: {e}")
+            raise
+    
+    async def analyze_with_grounding(
+        self,
+        document_content: str,
+        prompt: str,
+        temperature: float = 0.1,
+        max_output_tokens: int = 16384,
+    ) -> dict[str, Any]:
+        """
+        Analiza un documento con Gemini usando Google Search Grounding.
+        Permite a Gemini buscar información actual en internet (ej: tarifas de mercado).
+        
+        IMPORTANTE: Grounding funciona con modelos Gemini 3 Pro, 3 Flash, 2.5 Pro, 2.5 Flash, y 2.0 Flash.
+        
+        Args:
+            document_content: Contenido del documento (texto extraído)
+            prompt: Prompt para el análisis (debe instruir a usar Google Search)
+            temperature: Temperatura para generación
+            max_output_tokens: Máximo de tokens de salida
+            
+        Returns:
+            Dict con el resultado del análisis parseado desde JSON
+        """
+        # Usar Gemini 3 Flash para grounding (mejor balance calidad/precio con grounding)
+        grounding_model = "gemini-3-flash-preview"
+        
+        start_time = time.time()
+        log = APIConsumptionLog(
+            timestamp=datetime.now(),
+            model=grounding_model,
+            operation="analyze_with_grounding",
+        )
+        
+        try:
+            # Construir prompt completo
+            full_prompt = f"""
+{prompt}
+
+DOCUMENTO A ANALIZAR:
+---
+{document_content}
+---
+
+Responde UNICAMENTE con JSON valido siguiendo el schema indicado.
+"""
+            
+            logger.info(f"Analyzing document with Grounding (Google Search)")
+            logger.info(f"  Model: {grounding_model}")
+            logger.info(f"  Temperature: {temperature}")
+            
+            # Configurar herramienta de Google Search para grounding
+            google_search_tool = types.Tool(
+                google_search=types.GoogleSearch()
+            )
+            
+            # Generar contenido con grounding habilitado
+            # NOTA: No usamos response_mime_type con grounding porque puede causar conflictos
+            response = self.client.models.generate_content(
+                model=grounding_model,
+                contents=full_prompt,
+                config={
+                    "temperature": temperature,
+                    "max_output_tokens": max_output_tokens,
+                    "tools": [google_search_tool],
+                    # No usar response_mime_type con grounding - parseamos manualmente
+                },
+            )
+            
+            # Extraer tokens
+            input_tokens, output_tokens, thinking_tokens = self._extract_token_counts(response)
+            log.input_tokens = input_tokens
+            log.output_tokens = output_tokens
+            log.thinking_tokens = thinking_tokens
+            log.total_tokens = input_tokens + output_tokens + thinking_tokens
+            
+            # Calcular costo (usar pricing de flash para grounding)
+            log.cost_usd = calculate_cost(grounding_model, input_tokens, output_tokens, thinking_tokens)
+            
+            # Obtener texto de respuesta - manejar diferentes formatos
+            response_text = None
+            
+            # Primero intentar .text
+            if hasattr(response, 'text') and response.text:
+                response_text = response.text
+            # Luego intentar desde candidates
+            elif hasattr(response, 'candidates') and response.candidates:
+                candidate = response.candidates[0]
+                if hasattr(candidate, 'content') and candidate.content:
+                    if hasattr(candidate.content, 'parts') and candidate.content.parts:
+                        for part in candidate.content.parts:
+                            if hasattr(part, 'text') and part.text:
+                                response_text = part.text
+                                break
+            
+            if not response_text:
+                logger.warning("Response text is empty, checking raw response...")
+                logger.warning(f"Response type: {type(response)}")
+                logger.warning(f"Response dir: {[attr for attr in dir(response) if not attr.startswith('_')]}")
+                raise ValueError("Model returned empty response - no text content found")
+            
+            # Parsear respuesta JSON
+            result = self._extract_json_from_text(response_text)
+            
+            # Agregar metadata de grounding si está disponible
+            if hasattr(response, 'candidates') and response.candidates:
+                candidate = response.candidates[0]
+                if hasattr(candidate, 'grounding_metadata') and candidate.grounding_metadata:
+                    grounding_meta = candidate.grounding_metadata
+                    
+                    # Extraer web search queries
+                    web_queries = []
+                    if hasattr(grounding_meta, 'web_search_queries'):
+                        web_queries = list(grounding_meta.web_search_queries or [])
+                    elif hasattr(grounding_meta, 'search_entry_point'):
+                        # Fallback para formato antiguo
+                        web_queries = getattr(grounding_meta, 'search_queries', [])
+                    
+                    # Extraer grounding chunks (fuentes web)
+                    chunks = []
+                    if hasattr(grounding_meta, 'grounding_chunks'):
+                        for chunk in (grounding_meta.grounding_chunks or []):
+                            if hasattr(chunk, 'web') and chunk.web:
+                                chunks.append({
+                                    'uri': getattr(chunk.web, 'uri', ''),
+                                    'title': getattr(chunk.web, 'title', '')
+                                })
+                    
+                    # Extraer grounding supports
+                    supports_count = 0
+                    if hasattr(grounding_meta, 'grounding_supports'):
+                        supports_count = len(grounding_meta.grounding_supports or [])
+                    
+                    result['_grounding_metadata'] = {
+                        'web_search_queries': web_queries,
+                        'grounding_chunks': chunks,
+                        'grounding_supports_count': supports_count,
+                    }
+            
+            log.latency_ms = (time.time() - start_time) * 1000
+            log.success = True
+            consumption_tracker.add_log(log)
+            
+            logger.info("Document analysis with grounding completed successfully")
+            return result
+            
+        except json.JSONDecodeError as e:
+            log.latency_ms = (time.time() - start_time) * 1000
+            log.success = False
+            log.error = f"Invalid JSON: {str(e)}"
+            consumption_tracker.add_log(log)
+            
+            logger.error(f"Failed to parse Gemini grounding response as JSON: {e}")
+            if 'response' in dir() and response is not None:
+                # Intentar extraer JSON de todas formas
+                try:
+                    text = getattr(response, 'text', None)
+                    if text:
+                        return self._extract_json_from_text(text)
+                except Exception:
+                    pass
+                return {"raw_response": str(response), "error": "Invalid JSON response"}
+            return {"error": "Invalid JSON response"}
+            
+        except Exception as e:
+            log.latency_ms = (time.time() - start_time) * 1000
+            log.success = False
+            log.error = str(e)
+            consumption_tracker.add_log(log)
+            
+            logger.error(f"Error analyzing document with grounding: {e}")
             raise
 
 

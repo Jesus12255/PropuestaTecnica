@@ -164,3 +164,113 @@ export interface UploadResponse {
   status: RFPStatus;
   message: string;
 }
+
+// ============ TEAM & COST ESTIMATION ============
+
+export type Scenario = 'A' | 'B' | 'C' | 'D';
+export type Seniority = 'junior' | 'mid' | 'senior' | 'lead';
+export type Dedication = 'full_time' | 'part_time';
+export type ViabilityAssessment = 'viable' | 'under_budget' | 'over_budget' | 'needs_review';
+
+export interface MarketRate {
+  min: number;
+  max: number;
+  average: number;
+  currency: string;
+  period: string;
+  source: string | null;
+}
+
+export interface RoleEstimation {
+  role_id: string;
+  title: string;
+  quantity: number;
+  seniority: Seniority;
+  required_skills: string[];
+  required_certifications: string[];
+  dedication: Dedication;
+  duration_months: number | null;
+  market_rate: MarketRate | null;
+  subtotal_monthly: number | null;
+  justification: string | null;
+}
+
+export interface TeamEstimation {
+  source: 'client_specified' | 'ai_estimated';
+  scenario: Scenario;
+  confidence: number;
+  roles: RoleEstimation[];
+  total_headcount: number;
+  rationale: string | null;
+}
+
+export interface CostBreakdownItem {
+  role: string;
+  quantity: number;
+  monthly_rate: number;
+  subtotal: number;
+}
+
+export interface ViabilityAnalysis {
+  client_budget: number | null;
+  required_budget: number;
+  gap: number;
+  gap_percent: number;
+  is_viable: boolean;
+  assessment: ViabilityAssessment;
+  recommendations: string[];
+}
+
+export interface CostEstimation {
+  scenario: Scenario;
+  scenario_description: string | null;
+  monthly_base: number;
+  currency: string;
+  source: string;
+  breakdown: CostBreakdownItem[];
+  margin_percent: number;
+  margin_amount: number;
+  suggested_monthly: number | null;
+  duration_months: number | null;
+  suggested_total: number | null;
+  viability: ViabilityAnalysis | null;
+}
+
+export interface MCPCandidate {
+  matricula: string;
+  nombre: string;
+  email: string;
+  cargo: string;
+  pais: string | null;
+  score: number;
+  match_principal: string | null;
+  certificaciones: Array<{ nombre: string; institucion?: string }>;
+  skills: Array<{ nombre: string; proficiencia?: number }>;
+  lider: { nombre?: string; email?: string } | null;
+}
+
+export interface MCPRoleResult {
+  rol_id: string;
+  descripcion: string;
+  candidatos: MCPCandidate[];
+  total: number;
+}
+
+export interface SuggestedTeam {
+  generated_at: string | null;
+  mcp_available: boolean;
+  resultados: Record<string, MCPRoleResult>;
+  total_roles: number;
+  total_candidatos: number;
+  coverage_percent: number;
+  error?: string;
+}
+
+export interface TeamSuggestionResponse {
+  rfp_id: string;
+  scenario: Scenario;
+  team_estimation: TeamEstimation;
+  cost_estimation: CostEstimation;
+  suggested_team: SuggestedTeam | null;
+  message: string | null;
+}

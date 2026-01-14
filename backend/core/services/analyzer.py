@@ -1,6 +1,7 @@
 """
 Servicio de análisis de RFPs usando Gemini via Google AI API.
 Trabaja con archivos locales extrayendo texto primero.
+Soporta grounding para obtener tarifas de mercado actuales.
 """
 import logging
 from datetime import datetime
@@ -178,6 +179,7 @@ class RFPAnalyzerService:
         content: bytes, 
         filename: str,
         analysis_mode: Literal["fast", "balanced", "deep"] = "balanced",
+        use_grounding: bool = True,
     ) -> dict[str, Any]:
         """
         Analiza un RFP desde su contenido en bytes.
@@ -186,12 +188,13 @@ class RFPAnalyzerService:
             content: Contenido del archivo en bytes
             filename: Nombre del archivo (para determinar tipo)
             analysis_mode: Modo de análisis (fast/balanced/deep)
+            use_grounding: Si True, usa Google Search para tarifas de mercado
             
         Returns:
-            Datos extraídos del RFP
+            Datos extraídos del RFP incluyendo team_estimation y cost_estimation
         """
         logger.info(f"Starting RFP analysis for: {filename}")
-        logger.info(f"Analysis mode: {analysis_mode}")
+        logger.info(f"Analysis mode: {analysis_mode}, Grounding: {use_grounding}")
         
         # Extraer texto del documento
         document_text = self.extract_text(content, filename)
@@ -202,22 +205,32 @@ class RFPAnalyzerService:
         
         logger.info(f"Extracted {len(document_text)} characters from document")
         
-        # Analizar con Gemini
-        result = await self.gemini.analyze_document(
-            document_content=document_text,
-            prompt=self.analysis_prompt,
-            analysis_mode=analysis_mode,
-        )
+        # Analizar con Gemini - usar grounding si está habilitado
+        if use_grounding:
+            logger.info("Using Gemini with Google Search Grounding for market rates")
+            result = await self.gemini.analyze_with_grounding(
+                document_content=document_text,
+                prompt=self.analysis_prompt,
+                temperature=0.1,
+                max_output_tokens=16384,
+            )
+        else:
+            result = await self.gemini.analyze_document(
+                document_content=document_text,
+                prompt=self.analysis_prompt,
+                analysis_mode=analysis_mode,
+            )
         
         logger.info(f"RFP analysis completed: {result}")
         return result
     
-    async def analyze_rfp(self, gcs_uri: str) -> dict[str, Any]:
+    async def analyze_rfp(self, gcs_uri: str, use_grounding: bool = True) -> dict[str, Any]:
         """
-        Analiza un RFP desde GCS (legacy, para compatibilidad).
+        Analiza un RFP desde GCS o local.
         
         Args:
-            gcs_uri: URI del archivo en Cloud Storage
+            gcs_uri: URI del archivo en Cloud Storage o local://
+            use_grounding: Si True, usa Google Search para tarifas de mercado
             
         Returns:
             Datos extraídos del RFP
@@ -230,17 +243,22 @@ class RFPAnalyzerService:
             storage = get_storage_service()
             content = storage.download_file(gcs_uri)
             filename = gcs_uri.split("/")[-1]
-            return await self.analyze_rfp_from_content(content, filename)
+            return await self.analyze_rfp_from_content(
+                content, 
+                filename, 
+                use_grounding=use_grounding
+            )
         
-        # Para GCS, intentar usar el método directo de Gemini
-        result = await self.gemini.analyze_pdf_from_gcs(
-            gcs_uri=gcs_uri,
-            prompt=self.analysis_prompt,
-            temperature=0.1,
+        # Para GCS, descargar y analizar
+        from core.storage import get_storage_service
+        storage = get_storage_service()
+        content = storage.download_file(gcs_uri)
+        filename = gcs_uri.split("/")[-1]
+        return await self.analyze_rfp_from_content(
+            content, 
+            filename, 
+            use_grounding=use_grounding
         )
-        
-        logger.info("RFP analysis completed")
-        return result
     
     async def generate_questions(self, rfp_data: dict[str, Any]) -> list[dict[str, Any]]:
         """

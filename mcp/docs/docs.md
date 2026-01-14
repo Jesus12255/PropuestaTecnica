@@ -731,6 +731,183 @@ MCP_MODE=mcp python server.py
 
 ---
 
+---
+
+## Integracion con RFP Analyzer Backend
+
+El **MCP Talent Search** esta integrado con el sistema **RFP Analyzer** para automatizar la busqueda de candidatos basandose en la estimacion de equipo generada por IA.
+
+### Flujo de Integracion
+
+```
++------------------+     +-------------------+     +------------------+
+|                  |     |                   |     |                  |
+|   RFP Document   | --> |   Gemini 2.0      | --> |  Team Estimation |
+|   (PDF/DOCX)     |     |   (con Grounding) |     |  + Cost Analysis |
+|                  |     |                   |     |                  |
++------------------+     +-------------------+     +------------------+
+                                                           |
+                                                           v
+                         +-------------------+     +------------------+
+                         |                   |     |                  |
+                         |   MCP Talent      | <-- |  MCPTalentClient |
+                         |   Search Server   |     |  (Backend)       |
+                         |                   |     |                  |
+                         +-------------------+     +------------------+
+                                  |
+                                  v
+                         +-------------------+
+                         |                   |
+                         |  Candidatos       |
+                         |  Reales TIVIT     |
+                         |                   |
+                         +-------------------+
+```
+
+### Cliente MCP en Backend
+
+El backend incluye un cliente HTTP para conectar con MCP:
+
+**Archivo:** `backend/core/services/mcp_client.py`
+
+```python
+import httpx
+from core.config import settings
+
+async def search_talent_for_team(roles: list[dict]) -> dict:
+    """
+    Busca candidatos para un equipo completo.
+    
+    Args:
+        roles: Lista de roles con descripcion, pais y cantidad
+        
+    Returns:
+        Resultados del MCP con candidatos por rol
+    """
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        response = await client.post(
+            f"{settings.MCP_TALENT_URL}/batch-search",
+            json={"roles": roles}
+        )
+        response.raise_for_status()
+        return response.json()
+```
+
+### Endpoint del Backend
+
+El backend expone un endpoint que conecta la estimacion de equipo con MCP:
+
+**Endpoint:** `POST /api/v1/rfp/{id}/suggest-team`
+
+**Flujo:**
+1. Obtiene la estimacion de equipo del RFP (generada por Gemini)
+2. Convierte roles a formato MCP
+3. Llama a `POST /batch-search` del MCP
+4. Guarda y retorna los candidatos encontrados
+
+### Formato de Conversion
+
+La estimacion de equipo de Gemini se convierte al formato MCP:
+
+**Input (team_estimation de Gemini):**
+```json
+{
+  "roles": [
+    {
+      "role_id": "Dev_Java_Sr",
+      "title": "Desarrollador Java Senior",
+      "quantity": 3,
+      "required_skills": ["Java", "Spring Boot", "AWS"],
+      "required_certifications": ["AWS Solutions Architect"]
+    }
+  ]
+}
+```
+
+**Output (formato MCP):**
+```json
+{
+  "roles": [
+    {
+      "rol_id": "Dev_Java_Sr",
+      "descripcion": "Java Spring Boot AWS AWS Solutions Architect Desarrollador Java Senior",
+      "pais": "Chile",
+      "cantidad": 7
+    }
+  ]
+}
+```
+
+**Logica de cantidad:**
+- Se solicita al menos el doble de candidatos requeridos
+- Minimo 5 candidatos por rol para dar opciones
+
+### Configuracion
+
+Variable de entorno en el Backend:
+
+```bash
+# .env del Backend
+MCP_TALENT_URL=http://localhost:8083
+
+# En Docker Compose, usa el nombre del servicio
+MCP_TALENT_URL=http://mcp:8083
+```
+
+### Response del Backend
+
+El endpoint `/suggest-team` retorna:
+
+```json
+{
+  "rfp_id": "uuid-del-rfp",
+  "scenario": "B",
+  "team_estimation": {
+    "source": "ai_estimated",
+    "confidence": 0.85,
+    "roles": [...]
+  },
+  "cost_estimation": {
+    "monthly_base": 45000,
+    "currency": "USD",
+    "viability": {...}
+  },
+  "suggested_team": {
+    "mcp_available": true,
+    "total_roles": 5,
+    "total_candidatos": 28,
+    "coverage_percent": 100,
+    "resultados": {
+      "Dev_Java_Sr": {
+        "rol_id": "Dev_Java_Sr",
+        "descripcion": "Java Spring Boot...",
+        "total": 7,
+        "candidatos": [...]
+      }
+    }
+  },
+  "message": "Equipo sugerido con 28 candidatos para 5 roles"
+}
+```
+
+### Manejo de Errores
+
+Si el MCP no esta disponible:
+
+```json
+{
+  "suggested_team": {
+    "mcp_available": false,
+    "error": "MCP Talent Search no disponible",
+    "resultados": {}
+  }
+}
+```
+
+El frontend muestra un mensaje apropiado y permite reintentar.
+
+---
+
 ## Licencia
 
 Proyecto interno TIVIT - Uso exclusivo corporativo.
