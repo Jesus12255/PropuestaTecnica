@@ -70,10 +70,19 @@ Segun el escenario:
 Responde SOLO con un JSON valido (sin markdown, sin explicaciones) con este formato:
 
 {
+<<<<<<< HEAD
   "client_name": "Nombre del cliente",
   "country": "Pais del RFP",
   "summary": "Resumen del proyecto en 2-3 oraciones",
   "category": "desarrollo_software | mantencion_aplicaciones | analitica | ia_chatbot | ia_documentos | ia_video | otro",
+=======
+  "title": "Título oficial del proyecto o licitación",
+  "client_name": "string | null - Nombre del cliente/empresa",
+  "client_acronym": "Siglas o abreviatura del cliente (ej: BCP, INDAP, BBVA)",
+  "country": "string | null - País de origen del RFP",
+  "summary": "string | null - Resumen/objetivo del proyecto (máximo 200 palabras)",
+  "category": "string | null - Una de: mantencion_aplicaciones, desarrollo_software, analitica, ia_chatbot, ia_documentos, ia_video, otro",
+>>>>>>> 5eb08570903cc796dd9982062a4e066fcc1b45bb
   
   "budget": {
     "amount_min": null,
