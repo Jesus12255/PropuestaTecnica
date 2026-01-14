@@ -56,7 +56,26 @@ const CostEstimationView: React.FC<CostEstimationViewProps> = ({ costEstimation,
     );
   }
 
-  const { viability, breakdown, currency } = costEstimation;
+  const { viability, breakdown = [], currency = 'USD' } = costEstimation;
+  
+  // Validar que breakdown exista y no esté vacío
+  if (!breakdown || breakdown.length === 0) {
+    return (
+      <Card>
+        <Empty
+          description={
+            <Space direction="vertical" size="small">
+              <Text>No se pudo generar el desglose de costos</Text>
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                El análisis no incluyó suficiente información para estimar los costos.
+              </Text>
+            </Space>
+          }
+          image={Empty.PRESENTED_IMAGE_SIMPLE}
+        />
+      </Card>
+    );
+  }
 
   const columns: ColumnsType<CostBreakdownItem> = [
     {
@@ -97,10 +116,14 @@ const CostEstimationView: React.FC<CostEstimationViewProps> = ({ costEstimation,
   ];
 
   const getViabilityAlert = () => {
-    if (!viability) return null;
+    if (!viability || !viability.assessment) return null;
 
     const config = viabilityConfig[viability.assessment];
+    if (!config) return null;
+
     const alertType = viability.is_viable ? 'success' : viability.assessment === 'needs_review' ? 'warning' : 'error';
+    const gapPercent = viability.gap_percent ?? 0;
+    const gap = viability.gap ?? 0;
 
     return (
       <Alert
@@ -110,16 +133,16 @@ const CostEstimationView: React.FC<CostEstimationViewProps> = ({ costEstimation,
         message={
           <Space>
             <Text strong>{config.label}</Text>
-            {viability.gap !== 0 && (
-              <Tag color={viability.gap > 0 ? 'red' : 'green'}>
-                {viability.gap > 0 ? '+' : ''}{viability.gap_percent.toFixed(1)}% 
-                ({currency} {Math.abs(viability.gap).toLocaleString()})
+            {gap !== 0 && (
+              <Tag color={gap > 0 ? 'red' : 'green'}>
+                {gap > 0 ? '+' : ''}{gapPercent.toFixed(1)}% 
+                ({currency} {Math.abs(gap).toLocaleString()})
               </Tag>
             )}
           </Space>
         }
         description={
-          viability.recommendations.length > 0 && (
+          viability.recommendations && viability.recommendations.length > 0 && (
             <ul style={{ margin: '8px 0 0 0', paddingLeft: 20 }}>
               {viability.recommendations.map((rec, i) => (
                 <li key={i}>{rec}</li>
@@ -143,7 +166,7 @@ const CostEstimationView: React.FC<CostEstimationViewProps> = ({ costEstimation,
           <Card size="small">
             <Statistic
               title="Costo Base Mensual"
-              value={costEstimation.monthly_base}
+              value={costEstimation.monthly_base ?? 0}
               prefix={<DollarOutlined />}
               formatter={(value) => `${currency} ${Number(value).toLocaleString()}`}
               valueStyle={{ fontSize: 18 }}
@@ -154,13 +177,13 @@ const CostEstimationView: React.FC<CostEstimationViewProps> = ({ costEstimation,
           <Card size="small">
             <Statistic
               title="Margen"
-              value={costEstimation.margin_percent}
+              value={costEstimation.margin_percent ?? 0}
               suffix="%"
               precision={1}
               valueStyle={{ color: '#722ed1', fontSize: 18 }}
             />
             <Text type="secondary" style={{ fontSize: 12 }}>
-              {currency} {costEstimation.margin_amount.toLocaleString()}
+              {currency} {(costEstimation.margin_amount ?? 0).toLocaleString()}
             </Text>
           </Card>
         </Col>

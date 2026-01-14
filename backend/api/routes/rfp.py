@@ -666,8 +666,8 @@ async def get_team_estimation(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Obtiene solo la estimación de equipo y costos de un RFP.
-    No llama a MCP, solo retorna los datos del análisis.
+    Obtiene la estimación de equipo, costos y candidatos sugeridos de un RFP.
+    No llama a MCP, solo retorna los datos guardados del análisis.
     """
     result = await db.execute(
         select(RFPSubmission).where(RFPSubmission.id == rfp_id)
@@ -684,5 +684,5 @@ async def get_team_estimation(
         "rfp_id": rfp_id,
         "team_estimation": rfp.extracted_data.get("team_estimation"),
         "cost_estimation": rfp.extracted_data.get("cost_estimation"),
-        "has_suggested_team": "suggested_team" in rfp.extracted_data,
+        "suggested_team": rfp.extracted_data.get("suggested_team"),
     }

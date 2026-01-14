@@ -291,7 +291,16 @@ class RFPAnalyzerService:
         Returns:
             Campos para actualizar en el modelo
         """
-        budget = extracted_data.get("budget", {}) or {}
+        # Manejar el campo budget de manera robusta
+        budget_data = extracted_data.get("budget")
+        if isinstance(budget_data, dict):
+            budget = budget_data
+        elif isinstance(budget_data, list) and len(budget_data) > 0 and isinstance(budget_data[0], dict):
+            # Si es una lista, tomar el primer elemento
+            budget = budget_data[0]
+        else:
+            # Por defecto, diccionario vacío
+            budget = {}
         
         # Parsear fechas
         proposal_deadline = None
@@ -320,9 +329,9 @@ class RFPAnalyzerService:
             "country": extracted_data.get("country"),
             "category": extracted_data.get("category"),
             "summary": extracted_data.get("summary"),
-            "budget_min": budget.get("amount_min"),
-            "budget_max": budget.get("amount_max"),
-            "currency": budget.get("currency", "USD"),
+            "budget_min": budget.get("amount_min") if isinstance(budget, dict) else None,
+            "budget_max": budget.get("amount_max") if isinstance(budget, dict) else None,
+            "currency": budget.get("currency", "USD") if isinstance(budget, dict) else "USD",
             "proposal_deadline": proposal_deadline,
             "questions_deadline": questions_deadline,
             "project_duration": extracted_data.get("project_duration"),
