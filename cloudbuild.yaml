@@ -23,22 +23,21 @@ steps:
       - 'push'
       - '${_GCP_REGION}-docker.pkg.dev/$PROJECT_ID/${_ARTIFACT_REGISTRY_REPO}/${_BACKEND_SERVICE_NAME}:$COMMIT_SHA'
 
-  - name: '${_GCP_REGION}-docker.pkg.dev/$PROJECT_ID/${_ARTIFACT_REGISTRY_REPO}/${_BACKEND_SERVICE_NAME}:${COMMIT_SHA}'
-    id: 'List files in /app'
-    entrypoint: 'ls'
-    args: ['-l', '/app']
-
-  # 3. Run database migrations (Alembic)
-  # This step runs the migrations before deploying the new version of the application.
-  # It uses the newly built image and connects to the Cloud SQL database.
+# 3. Run database migrations (Alembic)
   - name: '${_GCP_REGION}-docker.pkg.dev/$PROJECT_ID/${_ARTIFACT_REGISTRY_REPO}/${_BACKEND_SERVICE_NAME}:${COMMIT_SHA}'
     id: 'Run Database Migrations'
-    entrypoint: 'alembic'
+    entrypoint: 'bash'
     args:
-      - 'upgrade'
-      - 'head'
-    env:
-      - 'DATABASE_URL=${_DATABASE_URL}' # This should be a secret
+      - '-c'
+      - |
+        echo "=== DEBUG: Contenido de alembic.ini ==="
+        cat /app/alembic.ini || echo "❌ No se pudo leer alembic.ini"
+        echo "======================================"
+        
+        cd /app
+        # Forzamos explícitamente el archivo de configuración con -c
+        alembic -c /app/alembic.ini upgrade head
+    secretEnv: ['DATABASE_URL']
 
   # 4. Deploy the backend service to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -121,6 +120,3 @@ timeout: '1800s' # 30 minutes
 
 # Specify the service account to be used for the build
 serviceAccount: 'projects/cloudv2-484122/serviceAccounts/cloud-build-service-account@cloudv2-484122.iam.gserviceaccount.com'
-
-options:
-  logging: CLOUD_LOGGING_ONLY

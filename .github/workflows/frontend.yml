@@ -1,0 +1,65 @@
+name: Frontend CI/CD
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'frontend/**'
+
+env:
+  REGION: 'us-central1'
+  REPO_NAME: 'rfp-analyzer-repo'
+  SERVICE_NAME: 'rfp-frontend'
+  BACKEND_SERVICE_NAME: 'rfp-backend'
+
+jobs:
+  deploy-frontend:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 1. Autenticación
+      - name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@v2'
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+      # 2. Configurar Cloud SDK
+      - name: 'Set up Cloud SDK'
+        uses: 'google-github-actions/setup-gcloud@v2'
+
+      # 3. Obtener URL del Backend
+      - name: 'Get Backend URL'
+        id: get-backend-url
+        run: |
+          BACKEND_URL=$(gcloud run services describe ${{ env.BACKEND_SERVICE_NAME }} --platform managed --region ${{ env.REGION }} --format 'value(status.url)')
+          echo "BACKEND_URL=$BACKEND_URL" >> $GITHUB_ENV
+          echo "Found Backend URL: $BACKEND_URL"
+
+      # 4. Configurar Docker
+      - name: 'Configure Docker'
+        run: |
+          gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
+
+      # 5. Construir y Subir Imagen (Inyectando URL)
+      - name: 'Build and Push Docker Image'
+        run: |
+          docker build \
+            --build-arg VITE_API_URL=${{ env.BACKEND_URL }}/api/v1 \
+            -t ${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+            ./frontend
+          
+          docker push ${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+
+      # 6. Desplegar a Cloud Run
+      - name: 'Deploy to Cloud Run'
+        uses: 'google-github-actions/deploy-cloudrun@v2'
+        with:
+          service: '${{ env.SERVICE_NAME }}'
+          image: '${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.SERVICE_NAME }}:${{ github.sha }}'
+          region: '${{ env.REGION }}'
+          flags: '--allow-unauthenticated'
+
+

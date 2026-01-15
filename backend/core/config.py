@@ -62,8 +62,14 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRATION_MINUTES: int = 60 * 24 * 7  # 7 days
     
-    # CORS
-    CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:5173"]
+    # CORS (Separated by comma)
+    CORS_ORIGINS: str = "*" 
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        if self.CORS_ORIGINS == "*":
+            return ["*"]
+        return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
     
     class Config:
         env_file = ".env"

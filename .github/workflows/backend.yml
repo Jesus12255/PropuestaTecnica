@@ -1,0 +1,78 @@
+name: Backend CI/CD
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'backend/**'
+
+env:
+  REGION: 'us-central1'
+  REPO_NAME: 'rfp-analyzer-repo'
+  SERVICE_NAME: 'rfp-backend'
+
+jobs:
+  deploy-backend:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 1. Autenticación con Google Cloud
+      - name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@v2'
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+      # 2. Configurar Cloud SDK
+      - name: 'Set up Cloud SDK'
+        uses: 'google-github-actions/setup-gcloud@v2'
+
+      # 3. Iniciar Cloud SQL Auth Proxy (Para migraciones seguras)
+      - name: Start Cloud SQL Proxy
+        run: |
+          # Descargar y ejecutar el proxy en background
+          curl -o cloud_sql_proxy https://dl.google.com/cloudsql/cloud_sql_proxy.linux.amd64
+          chmod +x cloud_sql_proxy
+          ./cloud_sql_proxy -instances=${{ secrets.CLOUD_SQL_CONNECTION_NAME }}=tcp:5432 &
+          echo "Esperando a que el proxy inicie..."
+          sleep 5
+
+      # 4. Configurar Docker
+      - name: 'Configure Docker'
+        run: |
+          gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
+
+      # 5. Construir y Subir Imagen
+      - name: 'Build and Push Docker Image'
+        run: |
+          docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.SERVICE_NAME }}:${{ github.sha }} ./backend
+          docker push ${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+
+      # 6. Ejecutar Migraciones (Alembic)
+      # Usamos --network="host" para conectar al Proxy corriendo en el runner (puerto 5432)
+      - name: 'Run Database Migrations'
+        run: |
+          docker run --rm --network="host" \
+            --env DATABASE_URL="postgresql+asyncpg://${{ secrets.DB_USER }}:${{ secrets.DB_PASS }}@127.0.0.1:5432/${{ secrets.DB_NAME }}" \
+            ${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
+            alembic -c /app/alembic.ini upgrade head
+
+      # 7. Desplegar a Cloud Run
+      - name: 'Deploy to Cloud Run'
+        uses: 'google-github-actions/deploy-cloudrun@v2'
+        with:
+          service: '${{ env.SERVICE_NAME }}'
+          image: '${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.SERVICE_NAME }}:${{ github.sha }}'
+          region: '${{ env.REGION }}'
+          flags: '--allow-unauthenticated --add-cloudsql-instances=${{ secrets.CLOUD_SQL_CONNECTION_NAME }}'
+          env_vars: |
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            GOOGLE_API_KEY=${{ secrets.GEMINI_API_KEY }}
+            JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
+            GCS_BUCKET=${{ secrets.GCS_BUCKET }}
+            GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}
+            CORS_ORIGINS=${{ secrets.CORS_ORIGINS }}
+
+

@@ -12,11 +12,17 @@ from alembic import context
 
 # Add the project root to the Python path
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+# Add the project root to the Python path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))) # For Docker /app
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))) # For Local
 
-from backend.core.database import Base
-
-from backend.models import user, rfp
+try:
+    from backend.core.database import Base
+    from backend.models import *  # Import all models to register them
+except ImportError:
+    # Fallback for Docker where we are inside 'backend' folder (mounted as /app)
+    from core.database import Base
+    from models import *
 
 
 
@@ -133,17 +139,13 @@ def run_migrations_online() -> None:
     """
 
     # this callback is used to prevent the Migration Context from connecting
-
     # to a database in each transaction for autogenerate.  This is because
-
     # the URL is now being passed to the connectable object.
-
     def process_url(url):
-
+        if url is None:
+            return url
         if url.startswith("postgresql+asyncpg://"):
-
             return url.replace("postgresql+asyncpg://", "postgresql://", 1)
-
         return url
 
 

@@ -15,7 +15,6 @@ if database_url.startswith("postgresql://"):
     database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
 
 
-# Engine async
 engine = create_async_engine(
     database_url,
     echo=settings.DEBUG,

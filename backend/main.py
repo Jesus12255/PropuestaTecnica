@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """Lifecycle manager for FastAPI app."""
     logger.info(f"Starting {settings.APP_NAME} v{settings.APP_VERSION}")
+    logger.info(f"CORS Origins configured: {settings.cors_origins_list}")
     
     # Crear tablas si no existen (solo en desarrollo)
     if settings.DEBUG:
@@ -49,7 +50,7 @@ app = FastAPI(
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -91,6 +92,6 @@ if __name__ == "__main__":
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=8000,
+        port=int(os.getenv("PORT", 8080)),
         reload=settings.DEBUG,
     )

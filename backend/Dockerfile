@@ -1,43 +1,65 @@
-# Backend Dockerfile - FastAPI + Python 3.12
-FROM python:3.12-slim
+# ================================
+# Stage 1: Python Builder
+# ================================
+FROM python:3.12-slim as python-builder
 
-# Set environment variables
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
-
-# Set work directory
-WORKDIR /app
-
-# Install system dependencies
+# Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libpq-dev \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first (for caching)
-COPY requirements.txt .
+WORKDIR /app
 
-# Install Python dependencies
-RUN pip install --upgrade pip && \
-    pip install -r requirements.txt
+# Install Python dependencies + Gunicorn
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir gunicorn
+
+# ================================
+# Stage 2: Runtime
+# ================================
+FROM python:3.12-slim
+
+# Metadata
+LABEL maintainer="RFP Analyzer Team"
+
+# Install runtime dependencies (libpq for PostgreSql)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user for security
+RUN useradd -m -u 1000 -s /bin/bash appuser
+
+WORKDIR /app
+
+# Copy installed packages from builder
+COPY --from=python-builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=python-builder /usr/local/bin /usr/local/bin
 
 # Copy application code
-COPY . .
+COPY --chown=appuser:appuser . .
 
-# Create non-root user
-RUN adduser --disabled-password --gecos "" appuser && \
-    chown -R appuser:appuser /app
+# Ensure correct permissions
+RUN chown -R appuser:appuser /app
+
 USER appuser
 
-# Expose port
-EXPOSE 8000
+# Environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PORT=8080
 
-# Health check
+# Expose port (Cloud Run defaults to 8080)
+EXPOSE 8080
+
+# Health check (Use PORT env var or default 8080)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f http://localhost:8080/health || exit 1
 
-# Run the application
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Start Application with Gunicorn + Uvicorn Workers (Production Standard)
+CMD gunicorn --bind :8080 --workers 1 --threads 8 --timeout 0 --worker-class uvicorn.workers.UvicornWorker "main:app"
