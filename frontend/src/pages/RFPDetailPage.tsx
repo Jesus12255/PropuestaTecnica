@@ -161,7 +161,17 @@ const RFPDetailPage: React.FC = () => {
 
   // Update RFP mutation
   const updateRfpMutation = useMutation({
-    mutationFn: (data: typeof editForm) => rfpApi.update(id!, data),
+    mutationFn: (data: {
+      client_name?: string;
+      country?: string;
+      category?: string;
+      budget_min?: number;
+      budget_max?: number;
+      currency?: string;
+      tvt?: string;
+      proposal_deadline?: string;
+      project_duration?: string;
+    }) => rfpApi.update(id!, data),
     onSuccess: (data) => {
       queryClient.setQueryData(['rfp', id], data);
       message.success('RFP actualizado exitosamente');
@@ -174,11 +184,16 @@ const RFPDetailPage: React.FC = () => {
 
   const handleSaveEdit = () => {
     // Sanitize data -> Convert nulls to undefined for API
-    const sanitizedData = {
-      ...editForm,
+    const sanitizedData: Parameters<typeof updateRfpMutation.mutate>[0] = {
+      client_name: editForm.client_name || undefined,
+      country: editForm.country || undefined,
+      category: editForm.category || undefined,
       budget_min: editForm.budget_min ?? undefined,
       budget_max: editForm.budget_max ?? undefined,
+      currency: editForm.currency || undefined,
+      tvt: editForm.tvt || undefined,
       proposal_deadline: editForm.proposal_deadline ?? undefined,
+      project_duration: editForm.project_duration || undefined,
     };
     updateRfpMutation.mutate(sanitizedData);
   };
