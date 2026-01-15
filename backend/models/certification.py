@@ -9,6 +9,7 @@ from sqlalchemy.dialects.postgresql import UUID
 
 from core.database import Base
 
+
 class Certification(Base):
     """Modelo para catálogo de certificaciones."""
     
