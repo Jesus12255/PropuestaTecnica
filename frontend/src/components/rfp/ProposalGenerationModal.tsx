@@ -1,9 +1,19 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { Modal, Button, List, Typography, Tag, Skeleton, Divider, Result, Checkbox, Input } from 'antd';
+import { Modal, Button, List, Typography, Tag, Skeleton, Divider, Checkbox, Input, Steps, ConfigProvider, theme, Space } from 'antd';
 import { useQuery } from '@tanstack/react-query';
 import { rfpApi, certificationsApi, proposalApi } from '../../lib/api';
-import { FilePdfOutlined, SearchOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
-
+import {
+    FilePdfOutlined,
+    SearchOutlined,
+    SafetyCertificateOutlined,
+    LeftOutlined,
+    RightOutlined,
+    ProjectOutlined,
+    FileTextOutlined,
+    CheckCircleFilled,
+    ClockCircleFilled,
+    GlobalOutlined
+} from '@ant-design/icons';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -13,23 +23,44 @@ interface ProposalGenerationModalProps {
     onCancel: () => void;
 }
 
+// MOCK DATA
+const MOCK_EXPERIENCES = [
+    { id: 'exp1', name: 'Sistema de Gestión Crediticia', client: 'Banco Estado', year: '2023', description: 'Implementación de motor de reglas de crédito y workflow BPMN.' },
+    { id: 'exp2', name: 'Plataforma de Atención Ciudadana', client: 'IPS', year: '2022', description: 'Digitalización de trámites y ventanilla única.' },
+    { id: 'exp3', name: 'Migración Cloud 50+ Apps', client: 'Codelco', year: '2023', description: 'Migración de aplicaciones legacy a AWS.' },
+    { id: 'exp4', name: 'App Gestión de Riego', client: 'Indap', year: '2021', description: 'Aplicación móvil offline-first para gestión en terreno.' },
+    { id: 'exp5', name: 'Portal de Proveedores', client: 'Falabella', year: '2024', description: 'Microservicios Spring Boot y Frontend React.' }
+];
+
+const MOCK_CHAPTERS = [
+    { id: 'chap1', name: '01. Resumen Ejecutivo', required: true },
+    { id: 'chap2', name: '02. Entendimiento del Problema', required: true },
+    { id: 'chap3', name: '03. Solución Propuesta', required: true },
+    { id: 'chap4', name: '04. Metodología (Agile/Scrum)', required: false },
+    { id: 'chap5', name: '05. Equipo de Trabajo', required: false },
+    { id: 'chap6', name: '06. Cronograma de Implementación', required: false },
+    { id: 'chap7', name: '07. Plan de Calidad (QA)', required: false },
+    { id: 'chap8', name: '08. Oferta Económica', required: true },
+];
+
 const ProposalGenerationModal: React.FC<ProposalGenerationModalProps> = ({
     rfpId,
     open,
     onCancel,
 }) => {
+    const [currentStep, setCurrentStep] = useState(0);
     const [selectedCertIds, setSelectedCertIds] = useState<string[]>([]);
+    const [selectedExpIds, setSelectedExpIds] = useState<string[]>(['exp1', 'exp3']);
+    const [selectedChapIds, setSelectedChapIds] = useState<string[]>(MOCK_CHAPTERS.map(c => c.id));
     const [isGenerating, setIsGenerating] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
 
-    // 1. Obtener detalle del RFP (incluyendo recommended_isos)
     const { data: rfp, isLoading: isLoadingRFP } = useQuery({
         queryKey: ['rfp', rfpId],
         queryFn: () => rfpApi.get(rfpId!),
         enabled: !!rfpId && open,
     });
 
-    // 2. Obtener lista completa de certificaciones para saber los nombres
     const { data: allCerts, isLoading: isLoadingCerts } = useQuery({
         queryKey: ['certifications'],
         queryFn: certificationsApi.list,
@@ -38,21 +69,16 @@ const ProposalGenerationModal: React.FC<ProposalGenerationModalProps> = ({
 
     const isLoading = isLoadingRFP || isLoadingCerts;
 
-    // 3. Procesar y ordenar recomendaciones
     const displayCertifications = useMemo(() => {
         if (!allCerts) return [];
-
         const recommendationsMap = new Map<string, 'high' | 'medium' | 'low'>();
         if (rfp?.recommended_isos) {
             rfp.recommended_isos.forEach(rec => recommendationsMap.set(rec.id, rec.level));
         }
-
         let processed = allCerts.map(cert => ({
             ...cert,
-            level: recommendationsMap.get(cert.id) // undefined if not recommended
+            level: recommendationsMap.get(cert.id)
         }));
-
-        // Filter by search term
         if (searchTerm) {
             const lower = searchTerm.toLowerCase();
             processed = processed.filter(c =>
@@ -60,43 +86,39 @@ const ProposalGenerationModal: React.FC<ProposalGenerationModalProps> = ({
                 (c.description && c.description.toLowerCase().includes(lower))
             );
         }
-
-        // Sort by priority: high > medium > low > undefined
         const priorityMap: Record<string, number> = { high: 4, medium: 3, low: 2, undefined: 1 };
-
-        return processed.sort(
-            (a, b) => {
-                const levelA = a.level || 'undefined';
-                const levelB = b.level || 'undefined';
-                return priorityMap[levelB] - priorityMap[levelA];
-            }
-        );
+        return processed.sort((a, b) => {
+            const levelA = a.level || 'undefined';
+            const levelB = b.level || 'undefined';
+            return priorityMap[levelB] - priorityMap[levelA];
+        });
     }, [rfp, allCerts, searchTerm]);
 
-    // 4. Pre-seleccionar High y Medium al cargar (solo la primera vez que se abre)
+    useEffect(() => {
+        if (open) {
+            setCurrentStep(0);
+        }
+    }, [open]);
+
     useEffect(() => {
         if (open && allCerts && rfp?.recommended_isos && selectedCertIds.length === 0) {
             const defaults = rfp.recommended_isos
                 .filter(c => c.level === 'high' || c.level === 'medium')
                 .map(c => c.id);
-            setSelectedCertIds(defaults);
-        } else if (!open) {
-            setSelectedCertIds([]);
-            setSearchTerm('');
+            if (defaults.length > 0) {
+                setSelectedCertIds(defaults);
+            }
         }
     }, [open, rfp, allCerts]);
 
+    const handleNext = () => setCurrentStep(prev => prev + 1);
+    const handlePrev = () => setCurrentStep(prev => prev - 1);
 
     const getLevelBadge = (level: string) => {
         switch (level) {
-            case 'high':
-                return <Tag color="#faad14" style={{ color: 'black', fontWeight: 500 }}>Alta Relevancia</Tag>; // Dorado/Ambar
-            case 'medium':
-                return <Tag color="#1890ff">Media</Tag>; // Azul Tech
-            case 'low':
-                return <Tag color="default">Baja</Tag>;
-            default:
-                return null;
+            case 'high': return <Tag color="#d4b106" style={{ color: '#000', fontWeight: 700, border: 'none', padding: '0 8px' }}>★ RECOMENDADA</Tag>;
+            case 'medium': return <Tag color="gray" style={{ border: 'none' }}>Relevante</Tag>;
+            default: return null;
         }
     };
 
@@ -105,228 +127,368 @@ const ProposalGenerationModal: React.FC<ProposalGenerationModalProps> = ({
         setIsGenerating(true);
         try {
             const blob = await proposalApi.generate(rfpId, selectedCertIds);
-
-            // Crear URL para descarga
             const url = window.URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            // Tratar de obtener nombre del RFP para el archivo
             const filename = `Propuesta_${rfp?.client_name || 'TIVIT'}.docx`;
             link.setAttribute('download', filename);
             document.body.appendChild(link);
             link.click();
             link.remove();
-
-            Modal.success({
-                title: 'Propuesta Generada',
-                content: 'El documento se ha descargado exitosamente.',
-                onOk: onCancel,
-            });
+            Modal.success({ title: '¡Documento Listo!', content: 'Tu propuesta se ha generado exitosamente.' });
         } catch (error) {
             console.error(error);
-            Modal.error({
-                title: 'Error',
-                content: 'Hubo un problema al generar la propuesta. Intente nuevamente.',
-            });
+            Modal.error({ title: 'Error', content: 'No se pudo generar el documento.' });
         } finally {
             setIsGenerating(false);
         }
     };
 
-    const toggleSelection = (id: string, checked: boolean) => {
-        if (checked) {
-            setSelectedCertIds(prev => [...prev, id]);
-        } else {
-            setSelectedCertIds(prev => prev.filter(cid => cid !== id));
-        }
+    const toggleSelection = (id: string, list: string[], setList: (ids: string[]) => void) => {
+        setList(list.includes(id) ? list.filter(i => i !== id) : [...list, id]);
     };
 
-    return (
-        <Modal
-            title={
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ background: '#fff1f0', padding: '8px', borderRadius: '50%' }}>
-                        <FilePdfOutlined style={{ fontSize: '20px', color: '#ff4d4f' }} />
-                    </div>
-                    <div>
-                        <Title level={5} style={{ margin: 0 }}>Generar Propuesta Técnica</Title>
-                        <Text type="secondary" style={{ fontSize: '12px' }}>Seleccione activos para incluir en el documento</Text>
-                    </div>
-                </div>
-            }
-            open={open}
-            onCancel={onCancel}
-            width={800}
-            centered
-            bodyStyle={{ padding: '24px' }}
-            footer={[
-                <Button key="cancel" onClick={onCancel} size="large" style={{ borderRadius: '6px' }}>
-                    Cancelar
-                </Button>,
-                <Button
-                    key="generate"
-                    type="primary"
-                    icon={<FilePdfOutlined />}
-                    onClick={handleGenerate}
-                    loading={isLoading || isGenerating}
-                    disabled={isLoading || !rfp}
-                    size="large"
-                    style={{ background: '#ff4d4f', borderColor: '#ff4d4f', borderRadius: '6px' }}
-                >
-                    Generar Documento ({selectedCertIds.length})
-                </Button>,
-            ]}
-        >
-            {isLoading ? (
-                <Skeleton active paragraph={{ rows: 6 }} />
-            ) : rfp ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                    {/* Header Card */}
-                    <div style={{
-                        padding: '20px',
-                        background: '#1f1f1f',
-                        borderRadius: '12px',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-                        color: 'white'
-                    }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                            <Text style={{ color: '#8c8c8c', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px' }}>Cliente</Text>
-                            <Tag color="gold" style={{ border: 'none', color: '#000', fontWeight: 500 }}>{rfp.country?.toUpperCase()}</Tag>
+    // CONTENT RENDERERS
+    const renderStepContent = () => {
+        if (!rfp) return null;
+
+        // No more "Card" style. Integrated content.
+        const headerStyle = {
+            marginBottom: '24px',
+            borderBottom: '1px solid #333',
+            paddingBottom: '16px',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+        };
+
+        switch (currentStep) {
+            case 0: // SUMMARY
+                return (
+                    <div className="fade-in">
+                        {/* Hero Section */}
+                        <div style={{ textAlign: 'center', marginBottom: 40 }}>
+
+                            <Tag color="gold" style={{
+                                marginBottom: 16, padding: '4px 12px', borderRadius: 20,
+                                fontSize: 12, border: 'none', color: '#000', fontWeight: 700
+                            }}>
+                                <GlobalOutlined /> {rfp.country?.toUpperCase()}
+                            </Tag>
+                            <Title level={2} style={{ margin: '0 0 12px', fontSize: 32, fontWeight: 700, color: 'white', letterSpacing: '-0.5px' }}>
+                                {rfp.client_name}
+                            </Title>
+                            <Text type="secondary" style={{ fontSize: 18, fontWeight: 300, color: '#a6a6a6' }}>
+                                {rfp.title || rfp.file_name}
+                            </Text>
                         </div>
-                        <Title level={3} style={{ marginTop: 0, color: 'white', marginBottom: '4px' }}>
-                            {rfp.client_name}
-                        </Title>
-                        <Text style={{ color: '#d9d9d9', fontSize: '14px' }}>{rfp.title || rfp.file_name}</Text>
 
-                        <Divider style={{ borderColor: '#434343', margin: '16px 0' }} />
-
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'start' }}>
-                            <SafetyCertificateOutlined style={{ color: '#faad14', fontSize: '16px', marginTop: '4px' }} />
-                            <Paragraph ellipsis={{ rows: 2 }} style={{ margin: 0, color: '#f0f0f0', fontSize: '13px', lineHeight: '1.6' }}>
+                        {/* Summary Block - Direct Integration */}
+                        <div style={{ background: '#1f1f1f', padding: '32px', borderRadius: '16px', border: '1px solid #303030' }}>
+                            <Typography.Title level={5} style={{ marginTop: 0, marginBottom: 16, display: 'flex', alignItems: 'center', color: '#e0e0e0' }}>
+                                <SafetyCertificateOutlined style={{ marginRight: 10, color: '#E31837' }} />
+                                Análisis Ejecutivo
+                            </Typography.Title>
+                            <Paragraph style={{ color: '#8c8c8c', fontSize: 15, lineHeight: 1.8, marginBottom: 0, textAlign: 'justify' }}>
                                 {rfp.summary}
                             </Paragraph>
                         </div>
                     </div>
+                );
 
-                    {/* Certifications Section - Dark Theme Applied Here */}
-                    <div style={{
-                        border: '1px solid #303030',
-                        borderRadius: '12px',
-                        overflow: 'hidden',
-                        background: '#141414',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
-                    }}>
-                        <div style={{
-                            padding: '16px',
-                            borderBottom: '1px solid #303030',
-                            background: '#1f1f1f',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            flexWrap: 'wrap',
-                            gap: '12px'
-                        }}>
+            case 1: // CERTIFICATIONS
+                return (
+                    <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                        <div style={{ paddingBottom: 24, padding: '0 16px 24px 16px', borderBottom: '1px solid #333', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div>
-                                <Text strong style={{ fontSize: '15px', color: '#fff' }}>Catálogo de Certificaciones</Text>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
-                                    <Text type="secondary" style={{ fontSize: '12px', color: '#8c8c8c' }}>
-                                        {displayCertifications.length} disponibles
-                                    </Text>
-                                    {selectedCertIds.length > 0 && (
-                                        <Tag color="#135200" style={{ margin: 0, fontSize: '10px', border: '1px solid #237804', color: '#95de64' }}>
-                                            {selectedCertIds.length} seleccionados
-                                        </Tag>
-                                    )}
-                                </div>
+                                <Title level={4} style={{ margin: 0, marginBottom: 4, color: 'white' }}>Certificaciones</Title>
+                                <Text style={{ color: '#8c8c8c' }}>Selecciona las credenciales para este cliente</Text>
                             </div>
                             <Input
-                                placeholder="Buscar certificación..."
-                                prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
-                                style={{ width: 250, borderRadius: '6px', background: '#333', borderColor: '#434343', color: 'white' }}
-                                value={searchTerm}
+                                prefix={<SearchOutlined style={{ color: '#666' }} />}
+                                placeholder="Buscar..."
+                                style={{
+                                    width: 240, borderRadius: 8, padding: '8px 12px',
+                                    background: '#1f1f1f', border: '1px solid #333', color: 'white'
+                                }}
                                 onChange={e => setSearchTerm(e.target.value)}
-                                allowClear
-                                className="dark-search-input" // Note: Might need global CSS or inline styles override for AntD input classes if not taking effect.
+                                value={searchTerm}
                             />
                         </div>
+                        <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
+                            <List
+                                dataSource={displayCertifications}
+                                renderItem={(item) => {
+                                    const isSelected = selectedCertIds.includes(item.id);
+                                    return (
+                                        <List.Item
+                                            style={{
+                                                padding: '20px 24px',
+                                                margin: '8px 0',
+                                                cursor: 'pointer',
+                                                borderRadius: '12px',
+                                                background: isSelected ? 'rgba(227, 24, 55, 0.08)' : '#1f1f1f',
+                                                border: isSelected ? '1px solid #E31837' : '1px solid #303030',
+                                                transition: 'all 0.2s',
+                                            }}
+                                            onClick={() => toggleSelection(item.id, selectedCertIds, setSelectedCertIds)}
+                                        >
+                                            <List.Item.Meta
+                                                avatar={<Checkbox checked={isSelected} style={{ transform: 'scale(1.1)', marginTop: 4 }} />}
+                                                title={
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                                        <Text strong style={{ fontSize: 15, color: isSelected ? '#ff4d4f' : '#e0e0e0' }}>{item.name}</Text>
+                                                        {item.level && getLevelBadge(item.level)}
+                                                    </div>
+                                                }
+                                                description={<Text style={{ fontSize: 13, marginTop: 4, display: 'block', color: '#666' }}>{item.description}</Text>}
+                                            />
+                                        </List.Item>
+                                    );
+                                }}
+                            />
+                        </div>
+                    </div>
+                );
 
+            case 2: // EXPERIENCES
+                return (
+                    <div className="fade-in">
+                        <div style={headerStyle}>
+                            <Title level={4} style={{ margin: 0, color: 'white' }}>Experiencia Relevante</Title>
+                            <Tag color="#1f1f1f" style={{ border: '1px solid #333', color: '#8c8c8c' }}>Base de Conocimiento</Tag>
+                        </div>
+                        <div style={{ display: 'grid', gap: '16px' }}>
+                            {MOCK_EXPERIENCES.map(item => {
+                                const isSelected = selectedExpIds.includes(item.id);
+                                return (
+                                    <div
+                                        key={item.id}
+                                        onClick={() => toggleSelection(item.id, selectedExpIds, setSelectedExpIds)}
+                                        style={{
+                                            padding: '24px',
+                                            borderRadius: '16px',
+                                            border: isSelected ? '1px solid #E31837' : '1px solid #333',
+                                            background: isSelected ? '#2a0a0f' : '#1f1f1f',
+                                            boxShadow: isSelected ? '0 0 20px rgba(227, 24, 55, 0.1)' : 'none',
+                                            cursor: 'pointer',
+                                            display: 'flex', justifyContent: 'space-between', alignItems: 'start',
+                                            transition: 'all 0.2s ease',
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', gap: 20 }}>
+                                            <div style={{
+                                                width: 48, height: 48,
+                                                background: isSelected ? '#E31837' : '#262626',
+                                                borderRadius: '14px',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                color: isSelected ? 'white' : '#8c8c8c',
+                                                fontSize: 20
+                                            }}>
+                                                <ProjectOutlined />
+                                            </div>
+                                            <div>
+                                                <Text strong style={{ display: 'block', fontSize: 16, marginBottom: 4, color: 'white' }}>{item.name}</Text>
+                                                <Space size={8} split={<Divider type="vertical" style={{ borderColor: '#434343' }} />}>
+                                                    <Text style={{ fontSize: 13, color: '#E31837' }}>{item.client}</Text>
+                                                    <Text style={{ fontSize: 13, color: '#666' }}>{item.year}</Text>
+                                                </Space>
+                                                <Paragraph ellipsis={{ rows: 2 }} style={{ margin: '8px 0 0', color: '#8c8c8c', fontSize: 13 }}>
+                                                    {item.description}
+                                                </Paragraph>
+                                            </div>
+                                        </div>
+                                        <Checkbox checked={isSelected} style={{ transform: 'scale(1.1)' }} />
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                );
+
+            case 3: // CHAPTERS
+                return (
+                    <div className="fade-in">
+                        <div style={headerStyle}>
+                            <Title level={4} style={{ margin: 0, color: 'white' }}>Estructura del Documento</Title>
+                        </div>
+                        <List
+                            dataSource={MOCK_CHAPTERS}
+                            renderItem={item => {
+                                const isSelected = selectedChapIds.includes(item.id);
+                                return (
+                                    <List.Item style={{ padding: '16px 0', borderBottom: '1px solid #333' }}>
+                                        <div
+                                            style={{ width: '100%', display: 'flex', alignItems: 'center', cursor: 'pointer' }}
+                                            onClick={() => toggleSelection(item.id, selectedChapIds, setSelectedChapIds)}
+                                        >
+                                            <div style={{ marginRight: 20, color: isSelected ? '#E31837' : '#434343', transition: 'color 0.3s' }}>
+                                                {isSelected ? <CheckCircleFilled style={{ fontSize: 22 }} /> : <ClockCircleFilled style={{ fontSize: 22 }} />}
+                                            </div>
+                                            <div style={{ flex: 1 }}>
+                                                <Text style={{
+                                                    color: isSelected ? 'white' : '#666',
+                                                    fontWeight: isSelected ? 600 : 400,
+                                                    fontSize: 16,
+                                                    transition: 'all 0.3s'
+                                                }}>
+                                                    {item.name}
+                                                </Text>
+                                            </div>
+                                            {item.required && <Tag style={{ borderRadius: 10, border: 'none', background: '#262626', color: '#666' }}>Requerido</Tag>}
+                                        </div>
+                                    </List.Item>
+                                );
+                            }}
+                        />
+                    </div>
+                );
+            default: return null;
+        }
+    };
+
+    return (
+        <ConfigProvider
+            theme={{
+                algorithm: theme.darkAlgorithm,
+                token: {
+                    colorPrimary: '#E31837', // TIVIT RED
+                    borderRadius: 8,
+                    colorBgBase: '#000',
+                }
+            }}
+        >
+            <Modal
+                open={open}
+                onCancel={onCancel}
+                width={1000}
+                centered
+                footer={null}
+                styles={{ body: { padding: 0 } }}
+                closeIcon={null}
+                className="premium-wizard-dark-red"
+            >
+                <div style={{ display: 'flex', height: '700px', overflow: 'hidden', borderRadius: '16px', boxShadow: '0 24px 48px rgba(0,0,0,0.5)', background: '#141414' }}>
+                    {/* SIDEBAR: Gradient Deep Dark RED */}
+                    <div style={{
+                        width: '280px',
+                        background: 'linear-gradient(180deg, #161616 0%, #000000 100%)', // Harder Dark
+                        padding: '40px 32px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        color: 'white',
+                        position: 'relative',
+                        overflow: 'hidden',
+                        borderRight: '1px solid #262626'
+                    }}>
+                        {/* Decorative Circle */}
                         <div style={{
-                            maxHeight: '350px',
-                            overflowY: 'auto',
-                            padding: '0'
+                            position: 'absolute', top: -100, left: -50, width: 300, height: 300,
+                            background: 'radial-gradient(circle, rgba(227, 24, 55, 0.08) 0%, rgba(0,0,0,0) 70%)', // Fainter Red Glow
+                            pointerEvents: 'none'
+                        }} />
+
+                        <div style={{ marginBottom: 60, display: 'flex', alignItems: 'center', gap: 14, position: 'relative', zIndex: 1 }}>
+
+                            <div>
+                                <Text strong style={{ color: 'white', fontSize: 18, lineHeight: 1, letterSpacing: '1px' }}>TIVIT</Text>
+                                <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, display: 'block', letterSpacing: 2 }}>PROPOSALS AI</Text>
+                            </div>
+                        </div>
+
+                        <Steps
+                            direction="vertical"
+                            current={currentStep}
+                            items={[
+                                { title: 'Resumen', description: 'Contexto' },
+                                { title: 'Certificaciones', description: 'Credenciales' },
+                                { title: 'Experiencia', description: 'Evidencia' },
+                                { title: 'Contenidos', description: 'Índice' },
+                            ]}
+                            className="premium-steps-dark-mode"
+                            progressDot={(dot, { index, status }) => (
+                                <div style={{
+                                    width: 10, height: 10, borderRadius: '50%',
+                                    background: status === 'process' ? '#E31837' : (status === 'finish' ? '#434343' : '#262626'),
+                                    boxShadow: status === 'process' ? '0 0 10px #E31837' : 'none',
+                                    border: status === 'wait' ? '1px solid #333' : 'none',
+                                    transition: 'all 0.3s'
+                                }} />
+                            )}
+                        />
+
+                        <div style={{ marginTop: 'auto', position: 'relative', zIndex: 1 }}>
+                            <Button type="text" onClick={onCancel} style={{ color: 'rgba(255,255,255,0.4)', paddingLeft: 0, textTransform: 'uppercase', fontSize: 11, letterSpacing: 1 }}>
+                                <LeftOutlined /> Salir
+                            </Button>
+                        </div>
+                    </div>
+
+                    {/* CONTENT AREA: Deep Matte Black - Integrated Layout */}
+                    <div style={{ flex: 1, background: '#141414', padding: '0', display: 'flex', flexDirection: 'column' }}>
+                        {/* Scrollable Content Zone */}
+                        <div style={{ flex: 1, overflowY: 'auto', padding: '48px 48px 24px 48px', scrollbarWidth: 'thin' }}>
+                            {isLoading ? <Skeleton active paragraph={{ rows: 10 }} /> : renderStepContent()}
+                        </div>
+
+                        {/* Fixed Actions Footer */}
+                        <div style={{
+                            padding: '24px 48px',
+                            borderTop: '1px solid #262626',
+                            background: '#141414',
+                            display: 'flex', justifyContent: 'flex-end', gap: 16, alignItems: 'center'
                         }}>
-                            {displayCertifications.length > 0 ? (
-                                <List
-                                    itemLayout="horizontal"
-                                    dataSource={displayCertifications}
-                                    renderItem={(item) => {
-                                        const isSelected = selectedCertIds.includes(item.id);
-                                        return (
-                                            <List.Item
-                                                style={{
-                                                    padding: '12px 16px',
-                                                    cursor: 'pointer',
-                                                    // Dark mode background logic
-                                                    background: isSelected ? '#1a2e14' : 'transparent',
-                                                    borderLeft: isSelected ? '4px solid #52c41a' : '4px solid transparent',
-                                                    transition: 'all 0.2s',
-                                                    borderBottom: '1px solid #303030'
-                                                }}
-                                                // Using inline hover simulation/class is tricky in pure inline. relying on default or adding className if users have global CSS.
-                                                // For now, standard List item hover from AntD might be slight gray, which is fine on dark.
-                                                onClick={() => toggleSelection(item.id, !isSelected)}
-                                            >
-                                                <List.Item.Meta
-                                                    avatar={
-                                                        <Checkbox
-                                                            checked={isSelected}
-                                                            style={{ marginTop: '8px' }}
-                                                        />
-                                                    }
-                                                    title={
-                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                            {/* Explicitly setting text color to white/light-green for dark bg */}
-                                                            <Text strong style={{ color: isSelected ? '#73d13d' : '#f0f0f0', fontSize: '14px' }}>
-                                                                {item.name}
-                                                            </Text>
-                                                            {item.level ? getLevelBadge(item.level) : null}
-                                                        </div>
-                                                    }
-                                                    description={
-                                                        <div style={{ marginTop: '4px' }}>
-                                                            {item.description && (
-                                                                <Paragraph ellipsis={{ rows: 2 }} style={{ margin: 0, fontSize: '12px', color: '#8c8c8c' }}>
-                                                                    {item.description}
-                                                                </Paragraph>
-                                                            )}
-                                                            {item.location && (
-                                                                <Text type="secondary" style={{ fontSize: '10px', marginTop: '4px', display: 'block', color: '#595959' }}>
-                                                                    ID Doc: {item.filename || 'N/A'}
-                                                                </Text>
-                                                            )}
-                                                        </div>
-                                                    }
-                                                />
-                                            </List.Item>
-                                        );
+                            {currentStep > 0 && (
+                                <Button
+                                    onClick={handlePrev}
+                                    size="large"
+                                    type="text"
+                                    style={{ color: '#666' }}
+                                >
+                                    Volver
+                                </Button>
+                            )}
+
+                            {currentStep === 3 ? (
+                                <Button
+                                    type="primary"
+                                    onClick={handleGenerate}
+                                    loading={isGenerating}
+                                    size="large"
+                                    icon={<FilePdfOutlined />}
+                                    style={{
+                                        background: 'linear-gradient(90deg, #E31837 0%, #9c0c22 100%)',
+                                        borderColor: 'transparent',
+                                        borderRadius: '30px',
+                                        padding: '0 40px',
+                                        height: '50px',
+                                        fontWeight: 600,
+                                        boxShadow: '0 10px 30px rgba(227, 24, 55, 0.4)'
                                     }}
-                                />
+                                >
+                                    Generar Propuesta
+                                </Button>
                             ) : (
-                                <Result
-                                    status="info"
-                                    icon={<SearchOutlined style={{ color: '#434343' }} />}
-                                    title={<span style={{ color: '#d9d9d9' }}>No se encontraron certificaciones</span>}
-                                    subTitle={<span style={{ color: '#8c8c8c' }}>Intente con otros términos de búsqueda.</span>}
-                                    style={{ padding: '24px' }}
-                                />
+                                <Button
+                                    type="primary"
+                                    onClick={handleNext}
+                                    size="large"
+                                    style={{
+                                        borderRadius: '30px',
+                                        padding: '0 40px',
+                                        height: '50px',
+                                        background: '#262626',
+                                        border: '1px solid #333',
+                                        color: '#fff',
+                                        boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+                                    }}
+                                >
+                                    Siguiente <RightOutlined style={{ fontSize: 12, marginLeft: 8 }} />
+                                </Button>
                             )}
                         </div>
                     </div>
                 </div>
-            ) : (
-                <Result status="error" title="Error al cargar datos del RFP" />
-            )}
-        </Modal>
+            </Modal>
+        </ConfigProvider>
     );
 };
 
