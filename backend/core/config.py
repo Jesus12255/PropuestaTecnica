@@ -69,7 +69,20 @@ class Settings(BaseSettings):
     def cors_origins_list(self) -> list[str]:
         if self.CORS_ORIGINS == "*":
             return ["*"]
-        return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
+        
+        origins = self.CORS_ORIGINS.split(",")
+        cleaned_origins = []
+        
+        for origin in origins:
+            # Clean up JSON-like artifacts and quotes
+            clean = origin.strip().replace('[', '').replace(']', '').replace('"', '').replace("'", "")
+            # Remove trailing slash
+            if clean.endswith('/'):
+                clean = clean[:-1]
+            if clean:
+                cleaned_origins.append(clean)
+                
+        return cleaned_origins
     
     class Config:
         env_file = ".env"
