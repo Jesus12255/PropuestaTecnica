@@ -133,7 +133,7 @@ const CertificationsPage: React.FC = () => {
                 }}>
                     <div>
                         <Title level={2} style={{ margin: '0 0 8px 0', fontWeight: 700, letterSpacing: '-0.5px' }}>
-                            Certificaciones & Experiencia
+                            Certificaciones
                         </Title>
                         <Text type="secondary" style={{ fontSize: 16 }}>
                             Base de conocimiento verificada para licitaciones.

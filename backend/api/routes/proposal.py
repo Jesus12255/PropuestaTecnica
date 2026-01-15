@@ -55,6 +55,31 @@ async def generate_proposal(
             # Filter out None values just in case
             cert_locations = [loc for loc in cert_result.scalars().all() if loc]
 
+        experiences = []
+        if request.experience_ids:
+            logger.info(f"Recibidos IDs de experiencia: {request.experience_ids}")
+            from models.experience import Experience
+            exp_result = await db.execute(
+                select(Experience)
+                .where(Experience.id.in_(request.experience_ids))
+            )
+            # Use scalars().all() to get the list of Experience objects
+            experiences = list(exp_result.scalars().all())
+            logger.info(f"Encontradas {len(experiences)} experiencias en DB.")
+
+        # Fetch locations for selected chapters
+        chapter_locations = []
+        if getattr(request, "chapter_ids", None): # Check if field exists in schema
+             logger.info(f"Recibidos IDs de capítulos: {request.chapter_ids}")
+             from models.chapter import Chapter
+             chap_result = await db.execute(
+                 select(Chapter.location)
+                 .where(Chapter.id.in_(request.chapter_ids))
+                 .where(Chapter.is_active == True)
+             )
+             chapter_locations = [loc for loc in chap_result.scalars().all() if loc]
+             logger.info(f"Encontradas {len(chapter_locations)} ubicaciones de capítulos: {chapter_locations}")
+
         generator = get_proposal_generator()
         
         rfp_data = {
@@ -65,7 +90,9 @@ async def generate_proposal(
         context_data = generator.prepare_context(
             rfp_data, 
             user_name=user.full_name,
-            certification_locations=list(cert_locations)
+            certification_locations=list(cert_locations),
+            experiences=experiences,
+            chapter_locations=list(chapter_locations)
         ) 
         
         # 2. Generar el DOCX

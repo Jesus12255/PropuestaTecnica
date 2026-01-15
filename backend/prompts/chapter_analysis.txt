@@ -1,0 +1,24 @@
+Analiza el siguiente documento y determina si es un Capítulo de Propuesta Técnica válido para una licitación.
+
+Un capítulo válido debe contener contenido reutilizable para redactar nuevas propuestas.
+Ejemplos VÁLIDOS: 
+- Descripciones de servicios o metodologías.
+- Enfoques de trabajo, planes de gestión.
+- Perfiles de equipo (CVs resumidos).
+- Casos de éxito o referencias.
+- Descripciones técnicas de soluciones.
+
+Ejemplos INVÁLIDOS (NO son capítulos):
+- Certificados completos (como PDFs de ISO 9001, 27001) -> Estos deben ir en el módulo de Certificaciones.
+- Facturas, recibos, órdenes de compra.
+- Contratos firmados completos.
+- Correos electrónicos sueltos.
+- Documentos vacíos o ilegibles.
+
+Extrae la información en formato JSON estrictamente:
+{
+    "isValid": boolean, // true si es un capítulo válido, false si es inválido (ej. es una certificación pura)
+    "reason": "string", // justificación breve si es inválido (ej: "Es un certificado ISO, no un capítulo de contenido"), o "OK" si es válido.
+    "name": "string", // Título sugerido para el capítulo (ej: "Metodología de Gestión", "Caso de Éxito Banco X").
+    "description": "string" // Breve resumen del contenido (max 200 caracteres).
+}

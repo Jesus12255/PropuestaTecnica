@@ -308,3 +308,16 @@ export interface CertificationUploadResponse {
   message: string;
   id: string;
 }
+
+// ============ EXPERIENCE ============
+
+export interface Experience {
+  id: string;
+  descripcion_servicio: string;
+  propietario_servicio: string;
+  ubicacion: string;
+  fecha_inicio: string;
+  fecha_fin?: string;
+  monto_final?: number;
+  created_at: string;
+}

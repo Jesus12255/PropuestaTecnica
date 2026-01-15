@@ -70,6 +70,30 @@ class ProposalGeneratorService:
             
             # Pass the list (even if empty) so the template loop works
             context["certifications_section"] = cert_subdocs
+
+            # Process chapter subdocs
+            chap_locations = context.pop("_chapter_locations", [])
+            chap_subdocs = []
+            
+            for uri in chap_locations:
+                try:
+                    fd, temp_path = tempfile.mkstemp(suffix=".docx")
+                    os.close(fd)
+                    temp_files.append(temp_path)
+                    
+                    logger.info(f"Downloading chapter from {uri} to {temp_path}")
+                    content = self.storage_service.download_file(uri)
+                    
+                    with open(temp_path, "wb") as f:
+                        f.write(content)
+                        
+                    sd = doc.new_subdoc(temp_path)
+                    chap_subdocs.append(sd)
+                    
+                except Exception as e:
+                    logger.error(f"Error processing chapter {uri}: {e}")
+
+            context["chapters_section"] = chap_subdocs
             
             doc.render(context)
             
@@ -93,7 +117,7 @@ class ProposalGeneratorService:
 
 
 
-    def prepare_context(self, rfp_data: dict, user_name: str = "", certification_locations: list[str] = []) -> dict:
+    def prepare_context(self, rfp_data: dict, user_name: str = "", certification_locations: list[str] = [], experiences: list = [], chapter_locations: list[str] = []) -> dict:
         data = rfp_data.get("extracted_data", {}) or {}
 
         country = data.get("country", "").lower()
@@ -119,6 +143,19 @@ class ProposalGeneratorService:
             sede_tivit = "TIVIT Ecuador Cía. Ltda."
             direccion_tivit = "Av. República de El Salvador N34-127 y Suiza, Edificio Murano, Piso 9, Quito, Ecuador"
 
+        # Formatear experiencias
+        formatted_experiences = []
+        for idx, exp in enumerate(experiences, 1):
+            formatted_experiences.append({
+                "item": idx,
+                "descripcion": exp.descripcion_servicio,
+                "propietario": exp.propietario_servicio,
+                "ubicacion": exp.ubicacion,
+                "inicio": exp.fecha_inicio.strftime("%Y") if exp.fecha_inicio else "",
+                "fin": exp.fecha_fin.strftime("%Y") if exp.fecha_fin else "Actualidad",
+                "monto": f"{exp.monto_final:,.2f}" if exp.monto_final else "N/A"
+            })
+
         context = {
             "title": data.get("title", "Propuesta de Servicios TIVIT"),
             "client_acronym": data.get("client_acronym", ""),
@@ -129,7 +166,9 @@ class ProposalGeneratorService:
             "current_user_name": user_name,
             "summary": data.get("summary", ""),
             # Pass locations to be processed later
-            "_certification_locations": certification_locations
+            "_certification_locations": certification_locations,
+            "_chapter_locations": chapter_locations,
+            "experiencias": formatted_experiences
         }
         
         # Mezclar todo por si acaso

@@ -13,6 +13,8 @@ import {
   CloseCircleOutlined,
   SettingOutlined,
   SafetyCertificateOutlined,
+  ProjectOutlined,
+  ReadOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -70,6 +72,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     if (path === '/rfps/approved') return '/rfps/approved';
     if (path === '/rfps/rejected') return '/rfps/rejected';
     if (path === '/certifications') return '/certifications';
+    if (path === '/experiences') return '/experiences';
+    if (path === '/chapters') return '/chapters';
     if (path === '/settings') return '/settings';
     return '/';
   };
@@ -143,6 +147,18 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       icon: <SafetyCertificateOutlined />,
       label: 'Certificaciones',
       onClick: () => navigate('/certifications'),
+    },
+    {
+      key: '/experiences',
+      icon: <ProjectOutlined />,
+      label: 'Experiencias',
+      onClick: () => navigate('/experiences'),
+    },
+    {
+      key: '/chapters',
+      icon: <ReadOutlined />,
+      label: 'Capítulos',
+      onClick: () => navigate('/chapters'),
     },
     {
       type: 'divider' as const,

@@ -19,6 +19,7 @@ import type {
   SuggestedTeam,
   Certification,
   CertificationUploadResponse,
+  Experience,
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
@@ -208,12 +209,66 @@ export const certificationsApi = {
 // ============ PROPOSAL GENERATION ============
 
 export const proposalApi = {
-  generate: async (rfpId: string, certificationIds: string[]): Promise<Blob> => {
-    const { data } = await api.post(
-      '/proposal/generate',
-      { rfp_id: rfpId, certification_ids: certificationIds },
-      { responseType: 'blob' } // Important for downloading files
-    );
+  generate: async (rfpId: string, selectedCertIds: string[] = [], selectedExpIds: string[] = [], selectedChapIds: string[] = []) => {
+    const response = await api.post('/proposal/generate', { // CORRECTED URL to match backend router prefix
+      rfp_id: rfpId, // Ensure match with backend schema
+      certification_ids: selectedCertIds,
+      experience_ids: selectedExpIds,
+      chapter_ids: selectedChapIds
+    }, {
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+};
+
+export const experiencesApi = {
+  list: async () => {
+    const response = await api.get<Experience[]>('/experiences/');
+    return response.data;
+  },
+  create: async (data: Omit<Experience, 'id' | 'created_at'>) => {
+    const response = await api.post<Experience>('/experiences/', data);
+    return response.data;
+  },
+  update: async (id: string, data: Partial<Experience>) => {
+    const response = await api.put<Experience>(`/experiences/${id}`, data);
+    return response.data;
+  },
+  delete: async (id: string) => {
+    await api.delete(`/experiences/${id}`);
+  },
+  getRecommendations: async (rfpId: string) => {
+    const response = await api.post<{ experience_id: string; score: number; reason: string }[]>('/experiences/recommendations', { rfp_id: rfpId });
+    return response.data;
+  },
+};
+
+
+export interface Chapter {
+  id: string;
+  name: string;
+  description: string;
+  filename: string;
+  location: string;
+  created_at: string;
+}
+
+export const chaptersApi = {
+  list: async (): Promise<Chapter[]> => {
+    const { data } = await api.get<Chapter[]>('/chapters/');
+    return data;
+  },
+
+  upload: async (file: File): Promise<{ message: string; id: string }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const { data } = await api.post<{ message: string; id: string }>('/chapters/save', formData);
+    return data;
+  },
+
+  getRecommendations: async (rfpId: string) => {
+    const { data } = await api.post<{ chapter_id: string; score: number; reason: string }[]>('/chapters/recommendations', { rfp_id: rfpId });
     return data;
   },
 };

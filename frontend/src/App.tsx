@@ -13,6 +13,8 @@ import QuestionsPage from './pages/QuestionsPage';
 import RFPListPage from './pages/RFPListPage';
 import SettingsPage from './pages/SettingsPage';
 import CertificationsPage from './pages/CertificationsPage';
+import ExperiencesPage from './pages/ExperiencesPage';
+import ChaptersPage from './pages/ChaptersPage';
 
 // Componente para rutas protegidas
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -146,6 +148,26 @@ const App: React.FC = () => {
           element={
             <ProtectedRoute>
               <CertificationsPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Experiencias */}
+        <Route
+          path="/experiences"
+          element={
+            <ProtectedRoute>
+              <ExperiencesPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Capítulos */}
+        <Route
+          path="/chapters"
+          element={
+            <ProtectedRoute>
+              <ChaptersPage />
             </ProtectedRoute>
           }
         />

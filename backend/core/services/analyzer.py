@@ -126,8 +126,13 @@ class RFPAnalyzerService:
         try:
             self.certification_prompt = load_prompt("certification_analysis")
         except FileNotFoundError:
-            logger.warning("Certification prompt not found, using fallback")
             self.certification_prompt = "Analiza este certificado y extrae: name, issuer, description, issue_date, expiry_date, scope en JSON."
+
+        try:
+            self.chapter_prompt = load_prompt("chapter_analysis")
+        except FileNotFoundError:
+            logger.warning("Chapter prompt not found, using fallback")
+            self.chapter_prompt = "Analiza este capítulo de propuesta técnica y extrae: name (título del capítulo), description (breve resumen del contenido) en JSON."
 
     async def analyze_certification_content(self, content: bytes, filename: str) -> dict[str, Any]:
         """
@@ -142,6 +147,23 @@ class RFPAnalyzerService:
         result = await self.gemini.analyze_document(
             document_content=document_text,
             prompt=self.certification_prompt,
+            analysis_mode="fast"
+        )
+        return result
+
+    async def analyze_chapter_content(self, content: bytes, filename: str) -> dict[str, Any]:
+        """
+        Analiza un documento de capítulo.
+        """
+        logger.info(f"Analyzing chapter: {filename}")
+        document_text = self.extract_text(content, filename)
+        
+        if not document_text.strip():
+            return {"name": filename, "description": "No text extracted"}
+            
+        result = await self.gemini.analyze_document(
+            document_content=document_text,
+            prompt=self.chapter_prompt,
             analysis_mode="fast"
         )
         return result
@@ -391,6 +413,114 @@ class RFPAnalyzerService:
         }
 
 
+    async def analyze_experience_relevance(
+        self, 
+        rfp_summary: str,
+        experiences: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        """
+        Analiza la relevancia de las experiencias para un RFP.
+        Ref: Step Id: 2289
+        """
+        if not experiences:
+            return []
+
+        # Prepare prompt
+        experiences_text = "\n".join([
+            f"ID: {exp['id']}\nCliente: {exp.get('propietario_servicio')}\nDescripción: {exp.get('descripcion_servicio')}\nMonto: {exp.get('monto_final')}\n---"
+            for exp in experiences
+        ])
+
+        prompt = f"""
+        Actúa como un experto en preventa de servicios TI.
+        
+        RESUMEN DEL RFP:
+        {rfp_summary}
+
+        EXPERIENCIAS PREVIAS (Portafolio):
+        {experiences_text}
+
+        TAREA:
+        Clasifica CADA experiencia según su relevancia para este RFP.
+        Genera un JSON list con objetos: {{ "experience_id": "UUID", "score": 0.0-1.0, "reason": "Breve justificación (max 15 palabras)" }}
+        
+        CRITERIOS:
+        - Score > 0.8: Match directo (Misma industria, tecnología similar, o caso de uso idéntico).
+        - Score > 0.5: Match parcial (Tecnología similar o industria similar).
+        - Score < 0.5: Poca relevancia.
+        - Se estricto. No alucines IDs. Usa SOLO los IDs provistos.
+        """
+
+        try:
+            # Use the new helper method directly
+            recommendations = await self.gemini.generate_json(prompt)
+            
+            # Ensure it's a list
+            if isinstance(recommendations, dict):
+                recommendations = [recommendations]
+            elif not isinstance(recommendations, list):
+                logger.warning(f"AI returned unexpected format: {type(recommendations)}")
+                return []
+            
+            # Normalize scores to 0-100 if they came as 0-1
+            # But the requirement implies returning list of objects matching schema
+            return recommendations
+
+        except Exception as e:
+            logger.error(f"Error in analyze_experience_relevance: {e}")
+            return []
+
+    async def analyze_chapter_relevance(
+        self, 
+        rfp_summary: str,
+        chapters: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        """
+        Analiza la relevancia de los capítulos para un RFP.
+        """
+        if not chapters:
+            return []
+
+        # Prepare prompt
+        chapters_text = "\n".join([
+            f"ID: {chap['id']}\nNombre: {chap['name']}\nDescripción: {chap.get('description', '')}\n---"
+            for chap in chapters
+        ])
+
+        prompt = f"""
+        Actúa como un experto en redacción de propuestas técnicas.
+        
+        RESUMEN DEL RFP:
+        {rfp_summary}
+
+        CAPÍTULOS DISPONIBLES (Biblioteca de Contenidos):
+        {chapters_text}
+
+        TAREA:
+        Evalúa qué capítulos son útiles para responder a este RFP específico.
+        Genera un JSON list con objetos: {{ "chapter_id": "UUID", "score": 0.0-1.0, "reason": "Breve justificación (max 10 palabras)" }}
+        
+        CRITERIOS:
+        - Score > 0.8: Capítulo Esencial (ej: Metodología, Equipo, si el RFP lo pide explícitamente).
+        - Score > 0.5: Capítulo Útil (Complementario).
+        - Score < 0.5: Irrelevante.
+        - Se estricto. Usa SOLO los IDs provistos.
+        """
+
+        try:
+            recommendations = await self.gemini.generate_json(prompt)
+            
+            if isinstance(recommendations, dict):
+                recommendations = [recommendations]
+            elif not isinstance(recommendations, list):
+                return []
+            
+            return recommendations
+
+        except Exception as e:
+            logger.error(f"Error in analyze_chapter_relevance: {e}")
+            return []
+            
 # Singleton instance
 _analyzer_service: RFPAnalyzerService | None = None
 

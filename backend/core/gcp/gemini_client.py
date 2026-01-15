@@ -608,6 +608,60 @@ Genera las preguntas en formato JSON como un array de objetos.
             
             logger.error(f"Error in chat: {e}")
             raise
+
+    async def generate_json(
+        self,
+        prompt: str,
+        temperature: float = 0.1,
+        max_output_tokens: int = 4096,
+    ) -> Any:
+        """
+        Genera una respuesta en formato JSON a partir de un prompt libre.
+        """
+        start_time = time.time()
+        log = APIConsumptionLog(
+            timestamp=datetime.now(),
+            model=self.model_id,
+            operation="generate_json",
+        )
+        
+        try:
+            logger.info("Generating JSON with Gemini API")
+            
+            response = self.client.models.generate_content(
+                model=self.model_id,
+                contents=prompt,
+                config={
+                    "temperature": temperature,
+                    "max_output_tokens": max_output_tokens,
+                    "response_mime_type": "application/json",
+                },
+            )
+            
+            input_tokens, output_tokens, thinking_tokens = self._extract_token_counts(response)
+            log.input_tokens = input_tokens
+            log.output_tokens = output_tokens
+            log.thinking_tokens = thinking_tokens
+            log.total_tokens = input_tokens + output_tokens + thinking_tokens
+            log.cost_usd = calculate_cost(self.model_id, input_tokens, output_tokens, thinking_tokens)
+            
+            # Helper to extract valid JSON
+            result = self._extract_json_from_text(response.text)
+            
+            log.latency_ms = (time.time() - start_time) * 1000
+            log.success = True
+            consumption_tracker.add_log(log)
+            
+            return result
+            
+        except Exception as e:
+            log.latency_ms = (time.time() - start_time) * 1000
+            log.success = False
+            log.error = str(e)
+            consumption_tracker.add_log(log)
+            
+            logger.error(f"Error generating JSON: {e}")
+            raise
     
     async def analyze_with_grounding(
         self,
