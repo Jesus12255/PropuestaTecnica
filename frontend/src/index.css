@@ -239,6 +239,18 @@ a:hover {
   color: var(--color-primary) !important;
 }
 
+/* Helper para botón primario azul (override del rojo global) */
+.btn-primary-blue {
+  background: #1890ff !important;
+  border-color: #1890ff !important;
+}
+
+.btn-primary-blue:hover {
+  background: #40a9ff !important;
+  border-color: #40a9ff !important;
+  box-shadow: 0 0 15px rgba(24, 144, 255, 0.4) !important;
+}
+
 /* Inputs */
 .ant-input,
 .ant-input-affix-wrapper,
