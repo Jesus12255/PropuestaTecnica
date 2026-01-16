@@ -67,6 +67,7 @@ const RFPDetailPage: React.FC = () => {
   const [noGoModalOpen, setNoGoModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('summary');
   const [isEditing, setIsEditing] = useState(false);
+  const [pendingDecision, setPendingDecision] = useState<'go' | 'no_go' | null>(null);
   const [form] = Form.useForm();
 
   // RFP data
@@ -123,12 +124,14 @@ const RFPDetailPage: React.FC = () => {
     onSuccess: (data) => {
       queryClient.setQueryData(['rfp', id], data);
       message.success(`Decisión registrada: ${data.decision?.toUpperCase()}`);
+      setPendingDecision(null);
       if (data.decision === 'go') {
         navigate(`/rfp/${id}/questions`);
       }
     },
     onError: () => {
       message.error('Error al registrar la decisión');
+      setPendingDecision(null);
     },
   });
 
@@ -151,6 +154,7 @@ const RFPDetailPage: React.FC = () => {
   });
 
   const handleGo = () => {
+    setPendingDecision('go');
     decisionMutation.mutate({ decision: 'go' });
   };
 
@@ -159,6 +163,7 @@ const RFPDetailPage: React.FC = () => {
   };
 
   const confirmNoGo = () => {
+    setPendingDecision('no_go');
     decisionMutation.mutate({ decision: 'no_go', reason: noGoReason });
     setNoGoModalOpen(false);
     setNoGoReason('');
@@ -212,6 +217,14 @@ const RFPDetailPage: React.FC = () => {
       return Promise.reject('Solo se permiten números');
     }
     return Promise.resolve();
+  };
+
+  // Formatear categoría a título (Ej: desarrollo_software -> Desarrollo Software)
+  const formatCategory = (category: string | null | undefined): string => {
+    if (!category) return '-';
+    return category
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, (char) => char.toUpperCase());
   };
 
   if (isLoading) {
@@ -288,7 +301,7 @@ const RFPDetailPage: React.FC = () => {
                       {rfp.country || '-'}
                     </Descriptions.Item>
                     <Descriptions.Item label="Categoría">
-                      {rfp.category?.replace(/_/g, ' ') || '-'}
+                      {formatCategory(rfp.category)}
                     </Descriptions.Item>
                     <Descriptions.Item label="TVT">
                       {rfp.tvt || '-'}
@@ -628,7 +641,8 @@ const RFPDetailPage: React.FC = () => {
                   size="large"
                   icon={<CheckOutlined />}
                   onClick={handleGo}
-                  loading={decisionMutation.isPending}
+                  loading={decisionMutation.isPending && pendingDecision === 'go'}
+                  disabled={decisionMutation.isPending && pendingDecision === 'no_go'}
                   style={{ background: '#52c41a', borderColor: '#52c41a' }}
                 >
                   GO
@@ -638,7 +652,8 @@ const RFPDetailPage: React.FC = () => {
                   size="large"
                   icon={<CloseOutlined />}
                   onClick={handleNoGo}
-                  loading={decisionMutation.isPending}
+                  loading={decisionMutation.isPending && pendingDecision === 'no_go'}
+                  disabled={decisionMutation.isPending && pendingDecision === 'go'}
                 >
                   NO GO
                 </Button>

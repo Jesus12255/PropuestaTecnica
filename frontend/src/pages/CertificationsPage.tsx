@@ -9,6 +9,8 @@ import {
     InboxOutlined,
     FileWordOutlined,
     CheckCircleOutlined,
+    DeleteOutlined,
+    DownloadOutlined,
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { certificationsApi } from '../lib/api';
@@ -36,7 +38,48 @@ const CertificationsPage: React.FC = () => {
         // Eliminamos onSuccess global para manejarlo por archivo o al final
     });
 
-    const handleUpload = async () => {
+    // Mutation to delete cert
+    const deleteMutation = useMutation({
+        mutationFn: certificationsApi.delete,
+        onSuccess: () => {
+            message.success('Certificación eliminada');
+            queryClient.invalidateQueries({ queryKey: ['certifications'] });
+        },
+        onError: () => {
+            message.error('Error al eliminar certificación');
+        }
+    });
+
+    const handleDelete = (id: string) => {
+        Modal.confirm({
+            title: '¿Eliminar certificación?',
+            content: 'Esta acción no se puede deshacer.',
+            okText: 'Eliminar',
+            okType: 'danger',
+            cancelText: 'Cancelar',
+            onOk: () => deleteMutation.mutate(id)
+        });
+    };
+
+    const handleDownload = async (id: string, filename: string) => {
+        try {
+            message.loading({ content: 'Descargando...', key: 'download' });
+            const blob = await certificationsApi.download(id);
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', filename);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            message.success({ content: 'Descarga completa', key: 'download' });
+        } catch (error) {
+            console.error('Download error:', error);
+            message.error({ content: 'Error al descargar archivo', key: 'download' });
+        }
+    };
+
+    const handleUpload = async () => { // Kept original signature, diff's signature was partial/incorrect
         if (fileList.length === 0) return;
 
         try {
@@ -201,21 +244,7 @@ const CertificationsPage: React.FC = () => {
                                     bodyStyle={{ padding: 24, display: 'flex', flexDirection: 'column', height: '100%' }}
                                 >
                                     <div style={{ display: 'flex', alignItems: 'flex-start', marginBottom: 20 }}>
-                                        <div style={{
-                                            minWidth: 56,
-                                            height: 56,
-                                            borderRadius: 16,
-                                            background: 'linear-gradient(135deg, rgba(24, 144, 255, 0.1) 0%, rgba(24, 144, 255, 0.05) 100%)',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            marginRight: 16,
-                                            color: '#1890ff',
-                                            fontSize: 28,
-                                            border: '1px solid rgba(24, 144, 255, 0.2)'
-                                        }}>
-                                            <FileWordOutlined />
-                                        </div>
+
                                         <div style={{ overflow: 'hidden' }}>
                                             <Text strong style={{ fontSize: 16, display: 'block', lineHeight: 1.3, marginBottom: 4 }} ellipsis>
                                                 {cert.name || cert.filename}
@@ -240,6 +269,22 @@ const CertificationsPage: React.FC = () => {
                                         >
                                             {cert.description || 'Sin descripción disponible.'}
                                         </Paragraph>
+
+                                    </div>
+
+                                    <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'flex-end', paddingBottom: 16 }}>
+                                        <Button
+                                            type="text"
+                                            icon={<DownloadOutlined />}
+                                            onClick={() => handleDownload(cert.id, cert.filename)}
+                                            style={{ marginRight: 8 }}
+                                        />
+                                        <Button
+                                            type="text"
+                                            danger
+                                            icon={<DeleteOutlined />}
+                                            onClick={() => handleDelete(cert.id)}
+                                        />
                                     </div>
 
                                     <div style={{
@@ -388,7 +433,7 @@ const CertificationsPage: React.FC = () => {
                     </Space>
                 </div>
             </Modal>
-        </AppLayout>
+        </AppLayout >
     );
 };
 

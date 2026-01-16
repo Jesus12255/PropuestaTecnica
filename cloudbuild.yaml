@@ -40,7 +40,7 @@ steps:
     secretEnv: ['DATABASE_URL']
 
   # 4. Deploy the backend service to Cloud Run
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: 'Deploy Backend'
     entrypoint: 'gcloud'
     args:
@@ -51,11 +51,14 @@ steps:
       - '--region=${_GCP_REGION}'
       - '--platform=managed'
       - '--allow-unauthenticated' # For now, will be changed to authenticated and invoked by frontend
+      - '--timeout=600'           # 10 minutos para archivos grandes
+      - '--memory=2Gi'            # Mas memoria para procesar PDFs
+      - '--cpu=2'                 # Mas CPU para parsing
+      - '--max-instances=10'      # Limitar instancias
       - '--add-cloudsql-instances=${_CLOUD_SQL_CONNECTION_NAME}'
       - '--update-secrets=DATABASE_URL=projects/$PROJECT_ID/secrets/rfp-backend-database-url:latest,GEMINI_API_KEY=projects/$PROJECT_ID/secrets/GEMINI_API_KEY:latest,GCS_BUCKET=projects/$PROJECT_ID/secrets/GCS_BUCKET:latest,JWT_SECRET_KEY=projects/$PROJECT_ID/secrets/JWT_SECRET_KEY:latest'
       # Add other secrets here, mounted from Secret Manager
       # Example: --update-secrets=GCP_PROJECT_ID=${_BACKEND_SERVICE_NAME}-gcp-project-id:latest,GCS_BUCKET=...
-
   # ========================================================================================
   # Frontend Build & Deploy
   # ========================================================================================

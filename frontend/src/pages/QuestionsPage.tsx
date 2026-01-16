@@ -3,17 +3,18 @@
  */
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { 
-  Layout, Typography, Card, Button, Space, Spin, Alert, 
-  List, Tag, message, Tooltip 
+import {
+  Layout, Typography, Card, Button, Space, Spin, Alert,
+  List, Tag, message, Tooltip
 } from 'antd';
-import { 
+import {
   ArrowLeftOutlined, CopyOutlined, ReloadOutlined,
-  QuestionCircleOutlined 
+  QuestionCircleOutlined, FilePdfOutlined,
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { rfpApi } from '../lib/api';
 import AppLayout from '../components/layout/AppLayout';
+import ProposalGenerationModal from '../components/rfp/ProposalGenerationModal';
 
 const { Title, Text, Paragraph } = Typography;
 const { Content } = Layout;
@@ -38,6 +39,7 @@ const QuestionsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [generationModalOpen, setGenerationModalOpen] = React.useState(false);
 
   const { data: rfp, isLoading: rfpLoading } = useQuery({
     queryKey: ['rfp', id],
@@ -112,8 +114,8 @@ ${questions.map((q, i) => `${i + 1}. [${q.category?.toUpperCase() || 'GENERAL'}]
       <Content style={{ padding: 24 }}>
         {/* Header */}
         <div style={{ marginBottom: 24 }}>
-          <Button 
-            icon={<ArrowLeftOutlined />} 
+          <Button
+            icon={<ArrowLeftOutlined />}
             onClick={() => navigate(`/rfp/${id}`)}
             style={{ marginBottom: 16 }}
           >
@@ -126,8 +128,18 @@ ${questions.map((q, i) => `${i + 1}. [${q.category?.toUpperCase() || 'GENERAL'}]
               </Title>
               <Text type="secondary">{rfp.client_name || rfp.file_name}</Text>
             </div>
-            
+
             <Space>
+              {rfp.status === 'go' && (
+                <Button
+                  type="primary"
+                  icon={<FilePdfOutlined />}
+                  onClick={() => setGenerationModalOpen(true)}
+                  className="btn-primary-blue"
+                >
+                  Generar Propuesta
+                </Button>
+              )}
               <Button
                 icon={<ReloadOutlined />}
                 onClick={() => regenerateMutation.mutate()}
@@ -136,7 +148,6 @@ ${questions.map((q, i) => `${i + 1}. [${q.category?.toUpperCase() || 'GENERAL'}]
                 Regenerar
               </Button>
               <Button
-                type="primary"
                 icon={<CopyOutlined />}
                 onClick={copyToClipboard}
               >
@@ -155,7 +166,7 @@ ${questions.map((q, i) => `${i + 1}. [${q.category?.toUpperCase() || 'GENERAL'}]
 
         {/* Questions by Category */}
         {groupedQuestions && Object.entries(groupedQuestions).map(([category, categoryQuestions]) => (
-          <Card 
+          <Card
             key={category}
             title={
               <Space>
@@ -171,9 +182,9 @@ ${questions.map((q, i) => `${i + 1}. [${q.category?.toUpperCase() || 'GENERAL'}]
                 <List.Item>
                   <List.Item.Meta
                     avatar={
-                      <div style={{ 
-                        width: 32, 
-                        height: 32, 
+                      <div style={{
+                        width: 32,
+                        height: 32,
                         borderRadius: '50%',
                         background: '#f0f0f0',
                         display: 'flex',
@@ -232,6 +243,12 @@ ${questions.map((q, i) => `${i + 1}. [${q.category?.toUpperCase() || 'GENERAL'}]
             description="Haz clic en 'Regenerar' para generar preguntas basadas en el análisis del RFP."
           />
         )}
+
+        <ProposalGenerationModal
+          rfpId={id || null}
+          open={generationModalOpen}
+          onCancel={() => setGenerationModalOpen(false)}
+        />
       </Content>
     </AppLayout>
   );

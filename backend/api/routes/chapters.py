@@ -2,6 +2,7 @@
 Endpoints para capítulos.
 """
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from core.services.analyzer import get_analyzer_service
@@ -85,6 +86,62 @@ async def create_chapter(
     await db.refresh(chapter)
     
     return {"message": "Capítulo cargado exitosamente", "id": chapter.id}
+
+
+    return {"message": "Capítulo cargado exitosamente", "id": chapter.id}
+
+
+@router.delete("/{chapter_id}")
+async def delete_chapter(chapter_id: str, db: AsyncSession = Depends(get_db)):
+    """Eliminar un capítulo por ID."""
+    from uuid import UUID
+    try:
+        chap_uuid = UUID(chapter_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="ID de capítulo inválido")
+
+    result = await db.execute(select(Chapter).where(Chapter.id == chap_uuid))
+    chapter = result.scalar_one_or_none()
+    
+    if not chapter:
+        raise HTTPException(status_code=404, detail="Capítulo no encontrado")
+        
+    from sqlalchemy import delete
+    await db.execute(delete(Chapter).where(Chapter.id == chap_uuid))
+    await db.commit()
+    
+    return {"message": "Capítulo eliminado exitosamente"}
+
+
+@router.get("/{chapter_id}/download")
+async def download_chapter(chapter_id: str, db: AsyncSession = Depends(get_db)):
+    """Descargar un capítulo."""
+    from uuid import UUID
+    try:
+        chap_uuid = UUID(chapter_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="ID de capítulo inválido")
+
+    result = await db.execute(select(Chapter).where(Chapter.id == chap_uuid))
+    chapter = result.scalar_one_or_none()
+    
+    if not chapter:
+        raise HTTPException(status_code=404, detail="Capítulo no encontrado")
+        
+    storage = get_storage_service()
+    try:
+        file_content = storage.download_file(chapter.location)
+        
+        content_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document" if chapter.filename.endswith(".docx") else "application/octet-stream"
+        
+        from io import BytesIO
+        return StreamingResponse(
+            BytesIO(file_content), 
+            media_type=content_type, 
+            headers={"Content-Disposition": f"attachment; filename={chapter.filename}"}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error descargando archivo: {str(e)}")
 
 
 @router.post("/recommendations", response_model=List[ChapterRecommendation])

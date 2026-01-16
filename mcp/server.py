@@ -1,21 +1,26 @@
 """
-MCP Talent Search Server v3.0
+MCP Talent Search Server v4.0
 =============================
 Sistema de busqueda semantica de talento con:
 - Perfiles enriquecidos (todas las certs y skills por candidato)
 - Integracion con Gemini 2.5 Flash para consultas naturales
 - Endpoint /chat para lenguaje natural
 - Deduplicacion inteligente de candidatos
+- Busqueda en CVs indexados (v4.0)
+- Descarga de CVs
 
 Endpoints:
 - GET  /health           - Health check
 - GET  /docs             - Documentacion Swagger
-- POST /search           - Busqueda simple
+- POST /search           - Busqueda simple (certs + skills + CVs)
 - POST /batch-search     - Busqueda por roles
 - POST /chat             - Consulta en lenguaje natural (Gemini)
 - GET  /countries        - Paises disponibles
 - GET  /stats            - Estadisticas
 - POST /reindex          - Reconstruir indices
+- GET  /cvs/download/{matricula}  - Descargar CV (v4.0)
+- GET  /cvs/mapping-review        - Ver mapeo CVs (v4.0)
+- POST /reindex-cvs               - Reindexar solo CVs (v4.0)
 
 Filtros automaticos:
 - Certificaciones: Status=Verificado, Expirado=Nao
@@ -62,6 +67,14 @@ LANCEDB_PATH = BASE_DIR / "lancedb_data"
 TABLE_CERTS = "certificaciones"
 TABLE_SKILLS = "skills"
 
+# ============================================
+# CONFIGURACION CVs (v4.0)
+# ============================================
+CV_FOLDER = BASE_DIR / "cvs"
+CV_MAPPING_FILE = BASE_DIR / "cv_mapping.xlsx"
+CV_MAPPING_REVIEW_FILE = BASE_DIR / "cv_mapping_review.xlsx"
+TABLE_CVS = "cvs"
+
 # Modelo de embeddings multilingue
 EMBEDDING_MODEL = "paraphrase-multilingual-MiniLM-L12-v2"
 
@@ -96,6 +109,13 @@ class Lider(BaseModel):
     email: Optional[str] = None
 
 
+class CVMatch(BaseModel):
+    """Match encontrado en el CV del candidato (v4.0)."""
+    texto: str = Field(..., description="Fragmento del CV donde se encontro el match")
+    pagina: Optional[int] = Field(None, description="Numero de pagina")
+    score: float = Field(..., description="Score de similitud (0-100)")
+
+
 class PerfilCompleto(BaseModel):
     """Perfil enriquecido de un candidato con todas sus certs y skills."""
     matricula: str
@@ -107,7 +127,11 @@ class PerfilCompleto(BaseModel):
     skills: List[Skill] = []
     lider: Optional[Lider] = None
     match_principal: str  # Cert/skill que matcheo la busqueda
-    score: float  # Score de similitud (0-1)
+    score: float  # Score de similitud (0-100)
+    # Campos de CV (v4.0)
+    cv_matches: List[CVMatch] = Field(default=[], description="Matches encontrados en el CV")
+    tiene_cv: bool = Field(default=False, description="Si tiene CV disponible para descarga")
+    cv_filename: Optional[str] = Field(None, description="Nombre del archivo CV")
 
 
 class TalentSearchRequest(BaseModel):
@@ -181,6 +205,9 @@ class HealthResponse(BaseModel):
     total_skills: int
     total_colaboradores: int
     modelo_embeddings: str
+    # v4.0: Info de CVs
+    total_cvs: int = 0
+    total_cv_chunks: int = 0
 
 
 class CountriesResponse(BaseModel):
@@ -207,6 +234,11 @@ _table_skills = None
 _df_certs_raw: pd.DataFrame = None  # Cache de certificaciones crudas
 _df_skills_raw: pd.DataFrame = None  # Cache de skills crudos
 _available_countries: List[str] = []
+
+# Variables globales para CVs (v4.0)
+_table_cvs = None
+_cv_mapping: Dict[str, str] = {}          # matricula -> filename
+_cv_mapping_reverse: Dict[str, str] = {}  # filename -> matricula
 
 
 def get_model() -> SentenceTransformer:
@@ -494,12 +526,167 @@ def initialize_vector_db(force_rebuild: bool = False):
 
 
 # ============================================
+# INICIALIZACION DE CVs (v4.0)
+# ============================================
+
+def initialize_cv_index(force_rebuild: bool = False):
+    """
+    Indexa los CVs en LanceDB.
+    
+    Proceso:
+    1. Carga mapping manual si existe, sino genera automatico con fuzzy matching
+    2. Procesa CVs y extrae chunks de texto
+    3. Genera embeddings y los indexa en LanceDB
+    
+    Args:
+        force_rebuild: Si True, regenera indices aunque existan
+    """
+    global _table_cvs, _cv_mapping, _cv_mapping_reverse
+    
+    if not CV_FOLDER.exists():
+        logger.warning(f"Carpeta de CVs no existe: {CV_FOLDER}")
+        logger.info("Crear carpeta 'cvs/' y agregar los CVs para habilitar busqueda en CVs")
+        return
+    
+    # Verificar si hay CVs
+    cv_files = [f for f in CV_FOLDER.iterdir() if f.suffix.lower() in ['.pdf', '.docx', '.doc']]
+    if not cv_files:
+        logger.warning(f"No hay CVs en: {CV_FOLDER}")
+        return
+    
+    logger.info(f"Encontrados {len(cv_files)} CVs en {CV_FOLDER}")
+    
+    model = get_model()
+    existing = _db.table_names()
+    
+    # === PASO 1: Obtener mapping filename -> matricula ===
+    from cv_matcher import CVMatcher, create_mapping_from_folder
+    from cv_processor import CVProcessor
+    
+    df_skills = load_skills_raw()
+    
+    if df_skills.empty:
+        logger.error("No se puede inicializar CVs sin datos de Census.xlsx")
+        return
+    
+    # Intentar cargar mapping manual primero
+    if CV_MAPPING_FILE.exists():
+        logger.info(f"Cargando mapping manual: {CV_MAPPING_FILE}")
+        matcher = CVMatcher(df_skills)
+        filename_to_matricula = matcher.load_manual_mapping(CV_MAPPING_FILE)
+        logger.info(f"Mapping manual: {len(filename_to_matricula)} entradas")
+    else:
+        # Generar mapping automatico
+        logger.info("Generando mapping automatico (fuzzy matching)...")
+        filename_to_matricula = create_mapping_from_folder(
+            cv_folder=CV_FOLDER,
+            census_df=df_skills,
+            output_review=CV_MAPPING_REVIEW_FILE,
+            manual_mapping=None
+        )
+        logger.info(f"Mapping automatico: {len(filename_to_matricula)} CVs mapeados")
+        logger.info(f"Revisar {CV_MAPPING_REVIEW_FILE} para CVs que requieren revision manual")
+    
+    if not filename_to_matricula:
+        logger.warning("No se pudo mapear ningun CV a matricula")
+        return
+    
+    # Guardar mappings en variables globales
+    _cv_mapping_reverse = filename_to_matricula.copy()
+    _cv_mapping = {v: k for k, v in filename_to_matricula.items()}
+    
+    # === PASO 2: Reutilizar tabla si existe y no hay rebuild ===
+    if TABLE_CVS in existing and not force_rebuild:
+        logger.info(f"Reutilizando tabla {TABLE_CVS}")
+        _table_cvs = _db.open_table(TABLE_CVS)
+        logger.info(f"CVs indexados: {len(_cv_mapping)} matriculas con CV")
+        return
+    
+    # === PASO 3: Procesar CVs y generar chunks ===
+    processor = CVProcessor(CV_FOLDER, chunk_size=500, overlap=100)
+    chunks = processor.process_all(filename_to_matricula)
+    
+    if not chunks:
+        logger.warning("No se generaron chunks de CVs")
+        return
+    
+    # === PASO 4: Generar embeddings e indexar ===
+    logger.info(f"Generando embeddings para {len(chunks)} chunks...")
+    texts = [c.text for c in chunks]
+    embeddings = model.encode(texts, show_progress_bar=True)
+    
+    records = []
+    for i, chunk in enumerate(chunks):
+        records.append({
+            "id": i,
+            "matricula": chunk.matricula,
+            "chunk_id": chunk.chunk_id,
+            "text": chunk.text,
+            "page_num": chunk.page_num,
+            "cv_filename": chunk.cv_filename,
+            "vector": embeddings[i].tolist()
+        })
+    
+    # Crear/recrear tabla
+    if TABLE_CVS in existing:
+        _db.drop_table(TABLE_CVS)
+    
+    _table_cvs = _db.create_table(TABLE_CVS, records)
+    logger.info(f"Tabla {TABLE_CVS}: {len(records)} chunks de {len(_cv_mapping)} CVs")
+
+
+# ============================================
 # BUSQUEDA Y ENRIQUECIMIENTO
 # ============================================
 
-def search_and_enrich(query: str, limit: int = 10, pais: Optional[str] = None) -> List[PerfilCompleto]:
+def get_basic_info_for_matricula(matricula: str) -> Optional[Dict]:
     """
-    Busca candidatos y retorna perfiles ENRIQUECIDOS con todas sus certs y skills.
+    Busca info basica de un empleado por matricula.
+    Usado cuando un candidato aparece solo en CV pero no en certs/skills.
+    """
+    # Primero intentar en skills (Census)
+    df = load_skills_raw()
+    if not df.empty:
+        mat_col = find_column(df, ["Matrícula", "Matricula"])
+        if mat_col:
+            matches = df[df[mat_col].astype(str).str.strip() == str(matricula).strip()]
+            if not matches.empty:
+                row = matches.iloc[0]
+                return {
+                    "nombre": get_col_value(row, ["Colaborador", "Nome"]),
+                    "email": get_col_value(row, ["Email"]),
+                    "cargo": get_col_value(row, ["Cargo"]),
+                    "pais": None
+                }
+    
+    # Luego intentar en certificaciones
+    df = load_certifications_raw()
+    if not df.empty:
+        mat_col = find_column(df, ["[Colaborador] Matricula", "Matricula"])
+        if mat_col:
+            matches = df[df[mat_col].astype(str).str.strip() == str(matricula).strip()]
+            if not matches.empty:
+                row = matches.iloc[0]
+                return {
+                    "nombre": get_col_value(row, ["[Colaborador] Nome", "Nome"]),
+                    "email": get_col_value(row, ["[Colaborador] Email", "Email"]),
+                    "cargo": get_col_value(row, ["[Colaborador] Cargo", "Cargo"]),
+                    "pais": get_col_value(row, ["[Colaborador] País", "[Colaborador] Pais"])
+                }
+    
+    return None
+
+
+def search_and_enrich(query: str, limit: int = 10, pais: Optional[str] = None,
+                      include_cv_search: bool = True) -> List[PerfilCompleto]:
+    """
+    Busca candidatos y retorna perfiles ENRIQUECIDOS con todas sus certs, skills y CVs.
+    
+    Args:
+        query: Consulta de busqueda
+        limit: Maximo de resultados
+        pais: Filtrar por pais
+        include_cv_search: Si True, tambien busca en CVs indexados (v4.0)
     """
     if _table_certs is None and _table_skills is None:
         return []
@@ -508,6 +695,7 @@ def search_and_enrich(query: str, limit: int = 10, pais: Optional[str] = None) -
     query_vector = model.encode([query])[0].tolist()
     
     candidatos_raw: Dict[str, Dict] = {}  # matricula -> data
+    cv_matches_by_matricula: Dict[str, List[CVMatch]] = {}  # v4.0: matches de CV
     
     # Buscar en certificaciones
     if _table_certs:
@@ -522,11 +710,11 @@ def search_and_enrich(query: str, limit: int = 10, pais: Optional[str] = None) -
             if not mat:
                 continue
             
-            dist = float(row.get("_distance", 0))
-            # Fórmula: convertir distancia L2 a score 0-100
-            # Distancias típicas van de 0 (idéntico) a ~20+ (muy diferente)
-            # Usamos exponencial negativa ajustada para este rango
-            score = 100 * math.exp(-dist / 15)  # dist=0->100, dist=15->37, dist=30->14
+            dist = float(row.get("_distance", 0) or 0)
+            # Validar que dist sea un número válido
+            if math.isnan(dist) or math.isinf(dist):
+                dist = 0
+            score = 100 * math.exp(-dist / 15)
             
             if mat not in candidatos_raw or score > candidatos_raw[mat]["score"]:
                 candidatos_raw[mat] = {
@@ -549,8 +737,10 @@ def search_and_enrich(query: str, limit: int = 10, pais: Optional[str] = None) -
             if not mat:
                 continue
             
-            dist = float(row.get("_distance", 0))
-            # Fórmula: convertir distancia L2 a score 0-100
+            dist = float(row.get("_distance", 0) or 0)
+            # Validar que dist sea un número válido
+            if math.isnan(dist) or math.isinf(dist):
+                dist = 0
             score = 100 * math.exp(-dist / 15)
             
             if mat not in candidatos_raw or score > candidatos_raw[mat]["score"]:
@@ -566,6 +756,58 @@ def search_and_enrich(query: str, limit: int = 10, pais: Optional[str] = None) -
                     "lider_nombre": row.get("lider_nombre"),
                     "lider_email": row.get("lider_email")
                 }
+    
+    # v4.0: Buscar en CVs
+    if include_cv_search and _table_cvs is not None:
+        cv_results = _table_cvs.search(query_vector).limit(limit * 5).to_pandas()
+        
+        for _, row in cv_results.iterrows():
+            mat = str(row.get("matricula", "")).strip()
+            if not mat:
+                continue
+            
+            dist = float(row.get("_distance", 0) or 0)
+            # Validar que dist sea un número válido
+            if math.isnan(dist) or math.isinf(dist):
+                dist = 0
+            score = 100 * math.exp(-dist / 15)
+            
+            # Guardar matches de CV para mostrar despues
+            if mat not in cv_matches_by_matricula:
+                cv_matches_by_matricula[mat] = []
+            
+            texto_cv = str(row.get("text", ""))
+            
+            # Sanitizar page_num (puede venir como NaN de LanceDB)
+            page_num_raw = row.get("page_num")
+            page_num_clean: Optional[int] = None
+            if page_num_raw is not None:
+                try:
+                    if not math.isnan(float(page_num_raw)):
+                        page_num_clean = int(page_num_raw)
+                except (ValueError, TypeError):
+                    pass
+            
+            cv_matches_by_matricula[mat].append(CVMatch(
+                texto=texto_cv[:300] + "..." if len(texto_cv) > 300 else texto_cv,
+                pagina=page_num_clean,
+                score=round(score, 2)
+            ))
+            
+            # Si el candidato no existe en certs/skills, agregarlo desde CV
+            if mat not in candidatos_raw:
+                info = get_basic_info_for_matricula(mat)
+                if info:
+                    candidatos_raw[mat] = {
+                        "matricula": mat,
+                        "nombre": info.get("nombre", ""),
+                        "email": info.get("email", ""),
+                        "cargo": info.get("cargo", ""),
+                        "pais": info.get("pais"),
+                        "match_principal": f"CV: {texto_cv[:50]}...",
+                        "score": score,
+                        "source": "cv"
+                    }
     
     # Ordenar por score y limitar
     sorted_candidates = sorted(candidatos_raw.values(), key=lambda x: x["score"], reverse=True)[:limit]
@@ -588,6 +830,10 @@ def search_and_enrich(query: str, limit: int = 10, pais: Optional[str] = None) -
         else:
             lider = get_leader_info(mat)
         
+        # v4.0: Obtener matches de CV (top 3)
+        cv_matches = cv_matches_by_matricula.get(mat, [])
+        cv_matches = sorted(cv_matches, key=lambda x: x.score, reverse=True)[:3]
+        
         perfiles.append(PerfilCompleto(
             matricula=mat,
             nombre=cand["nombre"],
@@ -598,7 +844,11 @@ def search_and_enrich(query: str, limit: int = 10, pais: Optional[str] = None) -
             skills=all_skills,
             lider=lider,
             match_principal=cand["match_principal"],
-            score=round(cand["score"], 2)  # Ya está en escala 0-100
+            score=round(cand["score"], 2),
+            # v4.0: Campos de CV
+            cv_matches=cv_matches,
+            tiene_cv=mat in _cv_mapping,
+            cv_filename=_cv_mapping.get(mat)
         ))
     
     return perfiles
@@ -803,12 +1053,14 @@ def get_statistics() -> Dict[str, Any]:
 async def lifespan(app: FastAPI):
     """Lifecycle: inicializa DB al arrancar."""
     logger.info("=" * 60)
-    logger.info("MCP Talent Search Server v3.0")
+    logger.info("MCP Talent Search Server v4.0 (con CVs)")
     logger.info(f"Gemini: {GEMINI_MODEL} ({'configurado' if GOOGLE_API_KEY else 'NO configurado'})")
     logger.info("=" * 60)
     
     try:
         initialize_vector_db()
+        # v4.0: Inicializar CVs
+        initialize_cv_index()
     except Exception as e:
         logger.error(f"Error inicializando: {e}")
     
@@ -819,9 +1071,9 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="MCP Talent Search API",
     description="""
-## Sistema de Búsqueda Semántica de Talento
+## Sistema de Búsqueda Semántica de Talento v4.0
 
-API para encontrar candidatos idóneos basándose en certificaciones y skills técnicos.
+API para encontrar candidatos idóneos basándose en certificaciones, skills técnicos y CVs.
 
 ### Características principales:
 
@@ -829,6 +1081,8 @@ API para encontrar candidatos idóneos basándose en certificaciones y skills t�
 - **Búsqueda Semántica**: Encuentra matches por significado, no solo palabras exactas  
 - **Chat Natural**: Endpoint `/chat` con Gemini para consultas en lenguaje natural
 - **Multilingüe**: Busca en portugués aunque la consulta sea en español
+- **Búsqueda en CVs** (v4.0): Encuentra candidatos aunque la skill no esté registrada formalmente
+- **Descarga de CVs** (v4.0): Endpoint para descargar el CV de cada candidato
 
 ### Filtros automáticos:
 - Solo certificaciones verificadas y no expiradas
@@ -836,16 +1090,19 @@ API para encontrar candidatos idóneos basándose en certificaciones y skills t�
 
 ### Ejemplo de uso:
 ```python
-# Búsqueda simple
+# Búsqueda simple (busca en certs, skills y CVs)
 POST /search
 {"consulta": "Java Spring Microservicios", "limit": 5}
 
 # Chat natural
 POST /chat  
 {"mensaje": "Necesito 3 desarrolladores senior de React para Chile"}
+
+# Descargar CV
+GET /cvs/download/12345
 ```
     """,
-    version="3.0.0",
+    version="4.0.0",
     lifespan=lifespan,
     docs_url="/docs",
     redoc_url="/redoc"
@@ -889,14 +1146,17 @@ async def health_check():
     """Verifica el estado del servicio."""
     return HealthResponse(
         status="healthy" if _table_certs else "degraded",
-        version="3.0.0",
+        version="4.0.0",
         gemini_disponible=bool(GOOGLE_API_KEY),
         total_certificaciones=_table_certs.count_rows() if _table_certs else 0,
         total_skills=_table_skills.count_rows() if _table_skills else 0,
         total_colaboradores=len(set(
             list(_table_certs.to_pandas()["matricula"].unique()) if _table_certs else []
         )),
-        modelo_embeddings=EMBEDDING_MODEL
+        modelo_embeddings=EMBEDDING_MODEL,
+        # v4.0: Info de CVs
+        total_cvs=len(_cv_mapping),
+        total_cv_chunks=_table_cvs.count_rows() if _table_cvs else 0
     )
 
 
@@ -1040,6 +1300,118 @@ async def reindex():
             "skills": _table_skills.count_rows() if _table_skills else 0
         }
     except Exception as e:
+        raise HTTPException(500, str(e))
+
+
+# ============================================
+# ENDPOINTS DE CVs (v4.0)
+# ============================================
+
+from fastapi.responses import FileResponse
+
+@app.get("/cvs/download/{matricula}", tags=["CVs"])
+async def download_cv(matricula: str):
+    """
+    Descarga el CV de un colaborador.
+    
+    Args:
+        matricula: Matricula del colaborador
+        
+    Returns:
+        Archivo PDF/DOCX del CV
+    """
+    # Buscar filename para esta matricula
+    cv_filename = _cv_mapping.get(matricula)
+    
+    if not cv_filename:
+        raise HTTPException(404, f"No hay CV registrado para matricula: {matricula}")
+    
+    cv_path = CV_FOLDER / cv_filename
+    
+    if not cv_path.exists():
+        raise HTTPException(404, f"Archivo no encontrado: {cv_filename}")
+    
+    # Determinar media type
+    ext = cv_path.suffix.lower()
+    media_types = {
+        ".pdf": "application/pdf",
+        ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ".doc": "application/msword"
+    }
+    
+    logger.info(f"Descargando CV: {cv_filename} (matricula: {matricula})")
+    
+    return FileResponse(
+        path=cv_path,
+        filename=cv_filename,
+        media_type=media_types.get(ext, "application/octet-stream")
+    )
+
+
+@app.get("/cvs/mapping-review", tags=["CVs"])
+async def get_mapping_review():
+    """
+    Retorna el estado del mapping CV -> matricula.
+    
+    Util para revisar que CVs fueron mapeados automaticamente
+    y cuales requieren revision manual.
+    """
+    if not CV_MAPPING_REVIEW_FILE.exists():
+        return {
+            "exito": False,
+            "mensaje": "No hay archivo de revision. Ejecutar /reindex-cvs primero o no hay CVs.",
+            "total_cvs": 0,
+            "mapeados": len(_cv_mapping)
+        }
+    
+    df = pd.read_excel(CV_MAPPING_REVIEW_FILE)
+    
+    auto_count = len(df[df["Estado"].str.contains("Auto", na=False)])
+    revisar_count = len(df[df["Estado"].str.contains("Revisar", na=False)])
+    no_encontrado_count = len(df[df["Estado"].str.contains("No encontrado", na=False)])
+    
+    return {
+        "exito": True,
+        "total_cvs": len(df),
+        "auto": auto_count,
+        "revisar": revisar_count,
+        "no_encontrado": no_encontrado_count,
+        "mapeados_activos": len(_cv_mapping),
+        "detalle": df.to_dict(orient="records")
+    }
+
+
+@app.post("/reindex-cvs", tags=["CVs"])
+async def reindex_cvs():
+    """
+    Reindexar CVs (regenera mapping y vectores).
+    
+    Usar cuando:
+    - Se agregan nuevos CVs
+    - Se corrige el archivo cv_mapping.xlsx
+    - Se quiere regenerar el matching automatico
+    """
+    try:
+        logger.info("Reindexando CVs...")
+        
+        # Forzar regeneracion del mapping automatico
+        if CV_MAPPING_FILE.exists():
+            backup_path = CV_MAPPING_FILE.with_suffix(".xlsx.bak")
+            logger.info(f"Backup de mapping: {backup_path}")
+            import shutil
+            shutil.copy(CV_MAPPING_FILE, backup_path)
+        
+        initialize_cv_index(force_rebuild=True)
+        
+        return {
+            "exito": True,
+            "mensaje": "CVs reindexados",
+            "total_chunks": _table_cvs.count_rows() if _table_cvs else 0,
+            "total_cvs_mapeados": len(_cv_mapping),
+            "revisar": f"Ver GET /cvs/mapping-review para CVs que requieren revision manual"
+        }
+    except Exception as e:
+        logger.error(f"Error reindexando CVs: {e}")
         raise HTTPException(500, str(e))
 
 

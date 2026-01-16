@@ -8,7 +8,15 @@ Analiza el siguiente texto extraído de un documento de certificación y extrae 
     "description": "Breve descripción de qué avala esta certificación (máximo 2 frases)",
     "issue_date": "Fecha de emisión en formato YYYY-MM-DD (si está disponible, sino null)",
     "expiry_date": "Fecha de vencimiento en formato YYYY-MM-DD (si está disponible, sino null)",
-    "scope": "Alcance de la certificación si se menciona (ej: Desarrollo de software, Servicios de Cloud)"
+    "scope": "Alcance de la certificación si se menciona (ej: Desarrollo de software, Servicios de Cloud)",
+    "is_valid_certification": true,
+    "validation_reason": "Razón si no es válida, o 'OK' si es válida"
 }
+
+INSTRUCCIONES DE VALIDACIÓN:
+1. Analiza si el documento es REALMENTE un certificado técnico, de calidad, ISO, o de fabricante de tecnología (partnerships).
+2. Si el documento es una receta de cocina, una factura de servicios públicos, un meme, un documento en blanco, o texto sin sentido -> "is_valid_certification": false.
+3. Si es un CV o una hoja de vida -> "is_valid_certification": false (Buscamos certificados de empresa o reconocimientos oficiales).
+4. Si no puedes determinar qué es -> "is_valid_certification": false.
 
 Sé conciso y preciso. Si no encuentras información para un campo, usa null. Prioriza el nombre exacto de la normal o certificación.

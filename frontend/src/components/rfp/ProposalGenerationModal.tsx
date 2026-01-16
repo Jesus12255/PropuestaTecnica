@@ -113,7 +113,7 @@ const ProposalGenerationModal: React.FC<ProposalGenerationModalProps> = ({
             const levelB = b.level || 'undefined';
             return priorityMap[levelB] - priorityMap[levelA];
         });
-    }, [rfp, allCerts]);
+    }, [rfp, allCerts, certSearchTerm]);
 
     // 4. SMART FILTERS & METADATA EXTRACTION (Memoized)
     const { filteredExperiences, filtersMetadata } = useMemo(() => {
@@ -294,16 +294,23 @@ const ProposalGenerationModal: React.FC<ProposalGenerationModalProps> = ({
             } as Chapter & { aiScore: number, aiReason?: string };
         });
 
-        // Initial selection logic (select high score ones by default if nothing selected yet)
-        // Only run this once or if selection is empty? 
-        // For now, let's just return the sorted list
+        // 2. Filter by Search Term
+        let filtered = processed;
+        if (chapSearchTerm) {
+            const lower = chapSearchTerm.toLowerCase();
+            filtered = processed.filter(c =>
+                (c.name && c.name.toLowerCase().includes(lower)) ||
+                (c.filename && c.filename.toLowerCase().includes(lower)) ||
+                (c.description && c.description.toLowerCase().includes(lower))
+            );
+        }
 
-        return processed.sort((a, b) => {
+        return filtered.sort((a, b) => {
             // Priority to High AI Score
             return b.aiScore - a.aiScore;
         });
 
-    }, [allChapters, chapterRecommendations]);
+    }, [allChapters, chapterRecommendations, chapSearchTerm]);
 
     // Effect to pre-select Recommended Chapters
     useEffect(() => {

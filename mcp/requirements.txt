@@ -26,3 +26,10 @@ httpx>=0.25.0
 
 # Utilidades
 python-dotenv>=1.0.0
+
+# ============================================
+# Procesamiento de CVs (v4.0)
+# ============================================
+PyMuPDF>=1.23.0        # Extraccion de texto de PDFs
+python-docx>=1.0.0     # Extraccion de texto de DOCX
+rapidfuzz>=3.0.0       # Fuzzy matching para nombres

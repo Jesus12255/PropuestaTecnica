@@ -60,6 +60,12 @@ mcp/tests/__pycache__/
 mcp/testsprite_tests/
 mcp/.env
 
+# CVs (v4.0) - contienen datos personales, no trackear
+mcp/cvs/
+mcp/cv_mapping.xlsx
+mcp/cv_mapping_review.xlsx
+mcp/cv_mapping.xlsx.bak
+
 # Test reports and temp files
 **/tmp/
 **/test-report.html
