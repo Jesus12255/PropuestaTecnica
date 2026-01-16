@@ -7,7 +7,6 @@ import {
     PlusOutlined,
     ReloadOutlined,
     InboxOutlined,
-    FileWordOutlined,
     CheckCircleOutlined,
     DeleteOutlined,
     DownloadOutlined,
