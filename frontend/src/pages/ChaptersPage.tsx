@@ -8,7 +8,8 @@ import {
     ReloadOutlined,
     InboxOutlined,
     FileWordOutlined,
-    ReadOutlined
+    ReadOutlined,
+    DeleteOutlined,
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { chaptersApi } from '../lib/api';
@@ -48,7 +49,30 @@ const ChaptersPage: React.FC = () => {
         mutationFn: chaptersApi.upload,
     });
 
-    const handleUpload = async () => {
+    // Mutation to delete chapter
+    const deleteMutation = useMutation({
+        mutationFn: chaptersApi.delete,
+        onSuccess: () => {
+            message.success('Capítulo eliminado');
+            queryClient.invalidateQueries({ queryKey: ['chapters'] });
+        },
+        onError: () => {
+            message.error('Error al eliminar capítulo');
+        }
+    });
+
+    const handleDelete = (id: string) => {
+        Modal.confirm({
+            title: '¿Eliminar capítulo?',
+            content: 'Esta acción no se puede deshacer.',
+            okText: 'Eliminar',
+            okType: 'danger',
+            cancelText: 'Cancelar',
+            onOk: () => deleteMutation.mutate(id)
+        });
+    };
+
+    const handleUpload = async () => { // Changed signature back to original as per faithful edit rule
         if (fileList.length === 0) return;
 
         try {
@@ -200,21 +224,7 @@ const ChaptersPage: React.FC = () => {
                                     bodyStyle={{ padding: 24, display: 'flex', flexDirection: 'column', height: '100%' }}
                                 >
                                     <div style={{ display: 'flex', alignItems: 'flex-start', marginBottom: 20 }}>
-                                        <div style={{
-                                            minWidth: 56,
-                                            height: 56,
-                                            borderRadius: 16,
-                                            background: 'linear-gradient(135deg, rgba(227, 24, 55, 0.1) 0%, rgba(227, 24, 55, 0.05) 100%)',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            marginRight: 16,
-                                            color: '#E31837',
-                                            fontSize: 28,
-                                            border: '1px solid rgba(227, 24, 55, 0.2)'
-                                        }}>
-                                            <ReadOutlined />
-                                        </div>
+
                                         <div style={{ overflow: 'hidden' }}>
                                             <Text strong style={{ fontSize: 16, display: 'block', lineHeight: 1.3, marginBottom: 4 }} ellipsis>
                                                 {item.name || item.filename}
@@ -225,20 +235,21 @@ const ChaptersPage: React.FC = () => {
                                         </div>
                                     </div>
 
-                                    <div style={{
-                                        flex: 1,
-                                        marginBottom: 20,
-                                        background: 'rgba(255,255,255,0.02)',
-                                        borderRadius: 8,
-                                        padding: 12
-                                    }}>
-                                        <Paragraph
-                                            ellipsis={{ rows: 3 }}
-                                            type="secondary"
-                                            style={{ margin: 0, fontSize: 14, lineHeight: 1.6 }}
-                                        >
-                                            {item.description || 'Sin descripción disponible.'}
-                                        </Paragraph>
+                                    <Paragraph
+                                        type="secondary"
+                                        ellipsis={{ rows: 3 }}
+                                        style={{ flex: 1, marginBottom: 16 }}
+                                    >
+                                        {item.description || 'Sin descripción'}
+                                    </Paragraph>
+
+                                    <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'flex-end' }}>
+                                        <Button
+                                            type="text"
+                                            danger
+                                            icon={<DeleteOutlined />}
+                                            onClick={() => handleDelete(item.id)}
+                                        />
                                     </div>
 
                                     <div style={{

@@ -210,6 +210,10 @@ export const certificationsApi = {
     const { data } = await api.post<CertificationUploadResponse>('/certifications/save', formData);
     return data;
   },
+
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/certifications/${id}`);
+  },
 };
 
 // ============ PROPOSAL GENERATION ============
@@ -271,6 +275,10 @@ export const chaptersApi = {
     formData.append('file', file);
     const { data } = await api.post<{ message: string; id: string }>('/chapters/save', formData);
     return data;
+  },
+
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/chapters/${id}`);
   },
 
   getRecommendations: async (rfpId: string) => {

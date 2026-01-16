@@ -87,6 +87,31 @@ async def create_chapter(
     return {"message": "Capítulo cargado exitosamente", "id": chapter.id}
 
 
+    return {"message": "Capítulo cargado exitosamente", "id": chapter.id}
+
+
+@router.delete("/{chapter_id}")
+async def delete_chapter(chapter_id: str, db: AsyncSession = Depends(get_db)):
+    """Eliminar un capítulo por ID."""
+    from uuid import UUID
+    try:
+        chap_uuid = UUID(chapter_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="ID de capítulo inválido")
+
+    result = await db.execute(select(Chapter).where(Chapter.id == chap_uuid))
+    chapter = result.scalar_one_or_none()
+    
+    if not chapter:
+        raise HTTPException(status_code=404, detail="Capítulo no encontrado")
+        
+    from sqlalchemy import delete
+    await db.execute(delete(Chapter).where(Chapter.id == chap_uuid))
+    await db.commit()
+    
+    return {"message": "Capítulo eliminado exitosamente"}
+
+
 @router.post("/recommendations", response_model=List[ChapterRecommendation])
 async def get_chapter_recommendations(
     request: ChapterRecommendationRequest,
