@@ -12,6 +12,7 @@ interface ChapterRecommendation {
 import {
     FilePdfOutlined,
     SearchOutlined,
+    LoadingOutlined,
     SafetyCertificateOutlined,
     LeftOutlined,
     RightOutlined,
@@ -223,6 +224,24 @@ const ProposalGenerationModal: React.FC<ProposalGenerationModalProps> = ({
             }
         }
     }, [open, rfp, allCerts]);
+
+    // PRE-SELECT RELEVANT EXPERIENCES (User Request: Auto-select like certs)
+    useEffect(() => {
+        if (open && filteredExperiences.length > 0 && selectedExpIds.length === 0) {
+            // Check if we have AI scores
+            const hasAiScores = filteredExperiences.some(e => e.aiScore > 0);
+
+            if (hasAiScores) {
+                const recommendedIds = filteredExperiences
+                    .filter(e => e.aiScore >= 0.5) // Auto-select relevant ones
+                    .map(e => e.id);
+
+                if (recommendedIds.length > 0) {
+                    setSelectedExpIds(recommendedIds);
+                }
+            }
+        }
+    }, [open, filteredExperiences]);
 
     const handleNext = () => setCurrentStep(prev => prev + 1);
     const handlePrev = () => setCurrentStep(prev => prev - 1);
@@ -469,9 +488,9 @@ const ProposalGenerationModal: React.FC<ProposalGenerationModalProps> = ({
                                         transition: 'all 0.2s'
                                     }}
                                 >
-                                    <StarFilled style={{ color: filters.onlyRecommended ? '#d4b106' : '#666' }} />
+                                    {isLoadingRecs ? <LoadingOutlined spin style={{ color: '#d4b106' }} /> : <StarFilled style={{ color: filters.onlyRecommended ? '#d4b106' : '#666' }} />}
                                     <Text style={{ color: filters.onlyRecommended ? '#d4b106' : '#bfbfbf', fontWeight: filters.onlyRecommended ? 600 : 400, fontSize: 13 }}>
-                                        Sugeridos IA
+                                        {isLoadingRecs ? 'Analizando...' : 'Sugeridos IA'}
                                     </Text>
                                 </div>
 
@@ -583,8 +602,8 @@ const ProposalGenerationModal: React.FC<ProposalGenerationModalProps> = ({
                                         style={{
                                             padding: '24px',
                                             borderRadius: '16px',
-                                            border: isSelected ? '1px solid #E31837' : (item.aiScore >= 0.8 ? '1px solid #d4b106' : (item.isRecommended ? '1px solid #4a3809' : '1px solid #333')), // Gold border for High AI match
-                                            background: isSelected ? '#2a0a0f' : (item.aiScore >= 0.8 ? 'linear-gradient(145deg, #1f1f1f, #2b2508)' : '#1f1f1f'),
+                                            border: isSelected ? '1px solid #E31837' : '1px solid #333', // Removed yellow highlight
+                                            background: isSelected ? '#2a0a0f' : '#1f1f1f', // Removed yellow gradient
                                             boxShadow: isSelected ? '0 0 20px rgba(227, 24, 55, 0.1)' : 'none',
                                             cursor: 'pointer',
                                             display: 'flex', alignItems: 'start', gap: 20, // Align items top
@@ -852,13 +871,13 @@ const ProposalGenerationModal: React.FC<ProposalGenerationModalProps> = ({
                                     let loadingText = "Cargando...";
 
                                     if (currentStep === 0) {
-                                        // On Summary, waiting for Certs to be ready for next step
+                                        // Summary step: Wait for Certifications (User Request)
                                         isNextLoading = isLoadingCerts;
                                         loadingText = "Cargando Certificaciones...";
                                     } else if (currentStep === 1) {
-                                        // On Certs, waiting for Experiences/Recs for next step
+                                        // Certs step: Wait for Exps AND AI Recommendations (User Request)
                                         isNextLoading = isLoadingExps || isLoadingRecs;
-                                        loadingText = "Cargando Experiencias...";
+                                        loadingText = "Analizando Experiencias...";
                                     }
 
                                     return (

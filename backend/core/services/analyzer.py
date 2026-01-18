@@ -134,6 +134,17 @@ class RFPAnalyzerService:
             logger.warning("Chapter prompt not found, using fallback")
             self.chapter_prompt = "Analiza este capítulo de propuesta técnica y extrae: name (título del capítulo), description (breve resumen del contenido) en JSON."
 
+        try:
+            self.experience_prompt = load_prompt("experience_relevance")
+        except FileNotFoundError:
+            logger.warning("Experience prompt not found, using fallback")
+            self.experience_prompt = """
+            Actúa como un experto en preventa servicios TI.
+            RESUMEN RFP: {rfp_summary}
+            EXPERIENCIAS: {experiences_text}
+            TAREA: Identifica relevantes (score > 0.4). JSON array output.
+            """
+
     async def analyze_certification_content(self, content: bytes, filename: str) -> dict[str, Any]:
         """
         Analiza un documento de certificación.
@@ -431,40 +442,53 @@ class RFPAnalyzerService:
             for exp in experiences
         ])
 
-        prompt = f"""
-        Actúa como un experto en preventa de servicios TI.
-        
-        RESUMEN DEL RFP:
-        {rfp_summary}
-
-        EXPERIENCIAS PREVIAS (Portafolio):
-        {experiences_text}
-
-        TAREA:
-        Clasifica CADA experiencia según su relevancia para este RFP.
-        Genera un JSON list con objetos: {{ "experience_id": "UUID", "score": 0.0-1.0, "reason": "Breve justificación (max 15 palabras)" }}
-        
-        CRITERIOS:
-        - Score > 0.8: Match directo (Misma industria, tecnología similar, o caso de uso idéntico).
-        - Score > 0.5: Match parcial (Tecnología similar o industria similar).
-        - Score < 0.5: Poca relevancia.
-        - Se estricto. No alucines IDs. Usa SOLO los IDs provistos.
-        """
+        # Prepare prompt using the loaded template
+        try:
+            prompt = self.experience_prompt.format(
+                rfp_summary=rfp_summary,
+                experiences_text=experiences_text
+            )
+        except Exception as e:
+            logger.error(f"Error formatting prompt: {e}")
+            # Fallback simple prompt
+            prompt = f"Analiza relevancia RFP: {rfp_summary} vs Experiencias: {experiences_text}. JSON array."
 
         try:
             # Use the new helper method directly
-            recommendations = await self.gemini.generate_json(prompt)
+            ai_recommendations = await self.gemini.generate_json(prompt)
             
             # Ensure it's a list
-            if isinstance(recommendations, dict):
-                recommendations = [recommendations]
-            elif not isinstance(recommendations, list):
-                logger.warning(f"AI returned unexpected format: {type(recommendations)}")
-                return []
+            if isinstance(ai_recommendations, dict):
+                ai_recommendations = [ai_recommendations]
+            elif not isinstance(ai_recommendations, list):
+                logger.warning(f"AI returned unexpected format: {type(ai_recommendations)}")
+                ai_recommendations = []
             
-            # Normalize scores to 0-100 if they came as 0-1
-            # But the requirement implies returning list of objects matching schema
-            return recommendations
+            # --- POST-PROCESSING: Fill in missing items ---
+            # The AI might filter out items. We need to ensure ALL experiences have a score for the frontend.
+            
+            # 1. Create a map of updated scores from AI
+            ai_map = {rec.get("experience_id"): rec for rec in ai_recommendations if rec.get("experience_id")}
+            
+            final_recommendations = []
+            
+            # 2. Iterate over ALL original experiences
+            for exp in experiences:
+                exp_id = str(exp["id"])
+                
+                if exp_id in ai_map:
+                    # Use AI's evaluation
+                    final_recommendations.append(ai_map[exp_id])
+                else:
+                    # Provide default low score for items the AI ignored
+                    final_recommendations.append({
+                        "experience_id": exp_id,
+                        "score": 0.05,
+                        "reason": "No seleccionada por IA como relevante para este RFP."
+                    })
+            
+            logger.info(f"AI returned {len(ai_recommendations)} relevant items. Augmented to {len(final_recommendations)} total items.")
+            return final_recommendations
 
         except Exception as e:
             logger.error(f"Error in analyze_experience_relevance: {e}")

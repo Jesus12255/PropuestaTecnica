@@ -4,6 +4,8 @@ Endpoints para la generación de propuestas.
 import logging
 from datetime import datetime
 from uuid import UUID
+import unicodedata
+import re
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
@@ -89,6 +91,7 @@ async def generate_proposal(
         # 1. Obtener el contexto (datos)
         context_data = generator.prepare_context(
             rfp_data, 
+            rfp,
             user_name=user.full_name,
             certification_locations=list(cert_locations),
             experiences=experiences,
@@ -98,7 +101,14 @@ async def generate_proposal(
         # 2. Generar el DOCX
         docx_stream = generator.generate_docx(context_data)
         
-        filename = f"Propuesta_{rfp.client_name or 'TIVIT'}_{datetime.now().strftime('%Y%m%d')}.docx"
+        # Sanitize filename (remove accents, etc)
+        client_clean = rfp.client_name or 'TIVIT'
+        # Normalize to NFKD to separate accents
+        client_clean = unicodedata.normalize('NFKD', client_clean).encode('ASCII', 'ignore').decode('ASCII')
+        # Replace remaining non-safe chars
+        client_clean = re.sub(r'[^\w\-_.]', '_', client_clean)
+        
+        filename = f"Propuesta_{client_clean}_{datetime.now().strftime('%Y%m%d')}.docx"
         
         return StreamingResponse(
             docx_stream,

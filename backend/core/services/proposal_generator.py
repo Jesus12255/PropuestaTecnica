@@ -2,6 +2,7 @@
 Service to generate Technical Proposal documents.
 Uses Jinja2 for templating and htmldocx for HTML -> DOCX conversion.
 """
+from models.rfp import RFPSubmission
 import logging
 import tempfile
 import os
@@ -117,10 +118,11 @@ class ProposalGeneratorService:
 
 
 
-    def prepare_context(self, rfp_data: dict, user_name: str = "", certification_locations: list[str] = [], experiences: list = [], chapter_locations: list[str] = []) -> dict:
+    def prepare_context(self, rfp_data: dict, rfp: RFPSubmission, user_name: str = "", certification_locations: list[str] = [], experiences: list = [], chapter_locations: list[str] = []) -> dict:
+        # Extract the combined data dictionary which contains merged DB and JSON fields
         data = rfp_data.get("extracted_data", {}) or {}
 
-        country = data.get("country", "").lower()
+        country =  rfp.country.lower()
         sede_tivit = "TIVIT Latam"
         direccion_tivit = "Dirección General"
         
@@ -165,7 +167,7 @@ class ProposalGeneratorService:
             "country": country,
             "current_user_name": user_name,
             "summary": data.get("summary", ""),
-            # Pass locations to be processed later
+            "tvt": rfp.tvt or "######",
             "_certification_locations": certification_locations,
             "_chapter_locations": chapter_locations,
             "experiencias": formatted_experiences

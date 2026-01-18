@@ -13,6 +13,7 @@ from typing import Any, Literal
 
 from google import genai
 from google.genai import types
+import asyncio
 
 from core.config import settings
 
@@ -350,7 +351,8 @@ Responde ÚNICAMENTE con JSON válido siguiendo el schema indicado.
             logger.info(f"  Temperature: {temp_to_use}")
             
             # Generar contenido usando la nueva API
-            response = self.client.models.generate_content(
+            response = await asyncio.to_thread(
+                self.client.models.generate_content,
                 model=model_to_use,
                 contents=full_prompt,
                 config={
@@ -436,7 +438,8 @@ Responde ÚNICAMENTE con JSON válido siguiendo el schema indicado.
                 mime_type="application/pdf",
             )
             
-            response = self.client.models.generate_content(
+            response = await asyncio.to_thread(
+                self.client.models.generate_content,
                 model=self.model_id,
                 contents=[pdf_part, prompt],
                 config={
@@ -508,7 +511,8 @@ Genera las preguntas en formato JSON como un array de objetos.
             
             logger.info("Generating questions with Gemini API")
             
-            response = self.client.models.generate_content(
+            response = await asyncio.to_thread(
+                self.client.models.generate_content,
                 model=self.model_id,
                 contents=full_prompt,
                 config={
@@ -578,7 +582,8 @@ Genera las preguntas en formato JSON como un array de objetos.
             if context:
                 prompt = f"Contexto:\n{context}\n\nPregunta: {message}"
             
-            response = self.client.models.generate_content(
+            response = await asyncio.to_thread(
+                self.client.models.generate_content,
                 model=self.model_id,
                 contents=prompt,
                 config={
@@ -628,7 +633,8 @@ Genera las preguntas en formato JSON como un array de objetos.
         try:
             logger.info("Generating JSON with Gemini API")
             
-            response = self.client.models.generate_content(
+            response = await asyncio.to_thread(
+                self.client.models.generate_content,
                 model=self.model_id,
                 contents=prompt,
                 config={
@@ -719,7 +725,8 @@ Responde UNICAMENTE con JSON valido siguiendo el schema indicado.
             
             # Generar contenido con grounding habilitado
             # NOTA: No usamos response_mime_type con grounding porque puede causar conflictos
-            response = self.client.models.generate_content(
+            response = await asyncio.to_thread(
+                self.client.models.generate_content,
                 model=grounding_model,
                 contents=full_prompt,
                 config={

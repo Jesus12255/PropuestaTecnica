@@ -4,8 +4,11 @@ CV Processor - Extrae texto de CVs (PDF/DOCX) y los prepara para indexacion.
 Proceso:
 1. Lee el archivo (PDF o DOCX)
 2. Extrae el texto por pagina
-3. Divide el texto en chunks con overlap para busqueda semantica
-4. Retorna lista de chunks listos para vectorizar
+3. [NUEVO] Extrae texto de imagenes usando Gemini Vision (certificaciones, badges, etc.)
+4. Divide el texto en chunks con overlap para busqueda semantica
+5. Retorna lista de chunks listos para vectorizar
+
+Version 2.0 - Ahora con soporte Vision OCR para imagenes en CVs
 """
 
 import re
@@ -30,6 +33,14 @@ try:
 except ImportError:
     DOCX_AVAILABLE = False
     logger.warning("python-docx no instalado. Instalar con: pip install python-docx")
+
+# Vision OCR con Gemini (opcional)
+try:
+    from cv_vision import process_cv_with_vision
+    VISION_AVAILABLE = True
+except ImportError:
+    VISION_AVAILABLE = False
+    logger.info("Vision OCR no disponible (cv_vision.py no encontrado)")
 
 
 @dataclass
@@ -59,13 +70,15 @@ class CVProcessor:
     - Soporta PDF y DOCX
     - Chunkeriza con overlap para mejor contexto
     - Limpia y normaliza el texto
+    - [NUEVO] Extrae texto de imagenes con Gemini Vision (certificaciones, badges, etc.)
     """
     
     def __init__(
         self, 
         cvs_folder: Path, 
         chunk_size: int = 500, 
-        overlap: int = 100
+        overlap: int = 100,
+        use_vision: bool = True  # Nuevo parametro
     ):
         """
         Inicializa el procesador.
@@ -74,10 +87,12 @@ class CVProcessor:
             cvs_folder: Carpeta donde estan los CVs
             chunk_size: Tamano maximo de cada chunk en caracteres
             overlap: Caracteres de overlap entre chunks consecutivos
+            use_vision: Si usar Gemini Vision para extraer texto de imagenes
         """
         self.cvs_folder = cvs_folder
         self.chunk_size = chunk_size
         self.overlap = overlap
+        self.use_vision = use_vision and VISION_AVAILABLE
     
     def extract_text_from_pdf(self, filepath: Path) -> List[Tuple[int, str]]:
         """
@@ -271,6 +286,7 @@ class CVProcessor:
         chunks = []
         chunk_id = 0
         
+        # Procesar texto normal de cada pagina
         for page_num, page_text in pages:
             # Limpiar texto
             cleaned_text = self.clean_text(page_text)
@@ -291,6 +307,31 @@ class CVProcessor:
                     cv_filename=filepath.name
                 ))
                 chunk_id += 1
+        
+        # [NUEVO] Extraer texto de imagenes con Gemini Vision
+        if self.use_vision:
+            try:
+                vision_text = process_cv_with_vision(filepath)
+                if vision_text:
+                    logger.info(f"  Vision OCR: {len(vision_text)} chars extraidos de imagenes")
+                    
+                    # Limpiar y chunkerizar el texto de imagenes
+                    cleaned_vision = self.clean_text(vision_text)
+                    if cleaned_vision:
+                        for chunk_text in self.chunk_text(cleaned_vision):
+                            if len(chunk_text) < 20:
+                                continue
+                            
+                            chunks.append(CVChunk(
+                                matricula=matricula,
+                                chunk_id=chunk_id,
+                                text=f"[IMAGEN] {chunk_text}",  # Prefijo para identificar
+                                page_num=0,  # Imagenes no tienen pagina especifica en este contexto
+                                cv_filename=filepath.name
+                            ))
+                            chunk_id += 1
+            except Exception as e:
+                logger.warning(f"Error en Vision OCR para {filepath.name}: {e}")
         
         return chunks
     
@@ -363,5 +404,6 @@ def check_dependencies() -> Dict[str, bool]:
     """
     return {
         "PyMuPDF": PYMUPDF_AVAILABLE,
-        "python-docx": DOCX_AVAILABLE
+        "python-docx": DOCX_AVAILABLE,
+        "Vision OCR": VISION_AVAILABLE
     }

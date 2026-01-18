@@ -1104,8 +1104,9 @@ GET /cvs/download/12345
     """,
     version="4.0.0",
     lifespan=lifespan,
-    docs_url="/docs",
-    redoc_url="/redoc"
+    docs_url="/tivit-manual-de-uso-anti-bots",
+    redoc_url=None,
+    openapi_url="/super-duper-esquema-de-openai-para-evitar-que-venga-un-bot-a-robar-datos.json"
 )
 
 app.add_middleware(

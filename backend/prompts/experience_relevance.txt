@@ -1,0 +1,23 @@
+Actúa como un experto en preventa de servicios TI.
+
+RESUMEN DEL RFP:
+{rfp_summary}
+
+EXPERIENCIAS PREVIAS (Portafolio):
+{experiences_text}
+
+TAREA:
+Identifica CUÁLES de las siguientes experiencias son relevantes para el RFP.
+Devuelve un JSON array ÚNICAMENTE con las experiencias que tengan un score > 0.3.
+
+Formato de Respuesta (JSON Array):
+[
+    {{ "experience_id": "ID_1", "score": 0.9, "reason": "Justificación..." }},
+    ...
+]
+
+CRITERIOS:
+- Score > 0.8: Match directo (Misma industria, tecnología similar, o caso de uso idéntico).
+- Score > 0.5: Match parcial (Tecnología similar o industria similar).
+- Si no es relevante, NO LA INCLUYAS en el JSON.
+- Salida: UNICAMENTE el JSON array.

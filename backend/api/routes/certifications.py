@@ -6,6 +6,8 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
+import unicodedata
+import re
 from core.services.analyzer import get_analyzer_service
 from core.database import get_db
 from core.storage import get_storage_service
@@ -122,10 +124,16 @@ async def download_certification(cert_id: UUID, db: AsyncSession = Depends(get_d
         content_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document" if cert.filename.endswith(".docx") else "application/octet-stream"
         
         from io import BytesIO
+        
+        # Sanitize filename
+        filename_clean = cert.filename
+        filename_clean = unicodedata.normalize('NFKD', filename_clean).encode('ASCII', 'ignore').decode('ASCII')
+        filename_clean = re.sub(r'[^\w\-_.]', '_', filename_clean)
+
         return StreamingResponse(
             BytesIO(file_content), 
             media_type=content_type, 
-            headers={"Content-Disposition": f"attachment; filename={cert.filename}"}
+            headers={"Content-Disposition": f"attachment; filename={filename_clean}"}
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error descargando archivo: {str(e)}")

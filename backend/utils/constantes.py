@@ -1,10 +1,9 @@
 class Constantes:
     class Countries:
-        PERU = "peru"
+        PERU = "perú"
         CHILE = "chile"
         ARGENTINA = "argentina"
         BRAZIL = "brazil"
         COLOMBIA = "colombia"
         ECUADOR = "ecuador"
-        PERU = "peru"
         VENEZUELA = "venezuela"

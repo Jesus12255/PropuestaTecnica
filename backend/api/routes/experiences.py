@@ -78,6 +78,8 @@ async def get_experience_recommendations(
         if not rfp:
             raise HTTPException(status_code=404, detail="RFP not found")
 
+        
+
         # 2. Fetch All Experiences
         exp_result = await db.execute(select(Experience))
         experiences = exp_result.scalars().all()
@@ -97,9 +99,14 @@ async def get_experience_recommendations(
             for e in experiences
         ]
 
+        logger.info(f"info-rfp: {rfp_summary}")
+        logger.info(f"info-exp: {exp_list}")
+
         # 4. Call AI Analyzer
         analyzer = get_analyzer_service()
         recommendations = await analyzer.analyze_experience_relevance(rfp_summary, exp_list)
+        
+        logger.info(f"AI Recommendations: {len(recommendations)} items returned. Content: {recommendations}")
         
         return recommendations
 

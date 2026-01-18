@@ -13,6 +13,8 @@ from models.rfp import RFPSubmission
 from models.schemas.chapter_schemas import ChapterRecommendationRequest, ChapterRecommendation
 from typing import List
 import logging
+import unicodedata
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -135,10 +137,16 @@ async def download_chapter(chapter_id: str, db: AsyncSession = Depends(get_db)):
         content_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document" if chapter.filename.endswith(".docx") else "application/octet-stream"
         
         from io import BytesIO
+        
+        # Sanitize filename
+        filename_clean = chapter.filename
+        filename_clean = unicodedata.normalize('NFKD', filename_clean).encode('ASCII', 'ignore').decode('ASCII')
+        filename_clean = re.sub(r'[^\w\-_.]', '_', filename_clean)
+
         return StreamingResponse(
             BytesIO(file_content), 
             media_type=content_type, 
-            headers={"Content-Disposition": f"attachment; filename={chapter.filename}"}
+            headers={"Content-Disposition": f"attachment; filename={filename_clean}"}
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error descargando archivo: {str(e)}")
