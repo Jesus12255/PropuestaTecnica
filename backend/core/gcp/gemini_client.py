@@ -14,6 +14,7 @@ from typing import Any, Literal
 from google import genai
 from google.genai import types
 import asyncio
+import random
 
 from core.config import settings
 
@@ -221,6 +222,57 @@ class GeminiClient:
         
         logger.info(f"Gemini client initialized with API Key")
         logger.info(f"Gemini model: {self.model_id}")
+
+    async def _retry_with_backoff(self, func, *args, max_retries=3, **kwargs):
+        """
+        Ejecuta una función asíncrona con reintentos exponenciales.
+        Maneja errores 429 (Resource Exhausted) y 503 (Service Unavailable).
+        También maneja respuestas vacías si la función retorna una respuesta checkeable.
+        """
+        retries = 0
+        base_delay = 1.0
+        
+        while True:
+            try:
+                result = await func(*args, **kwargs)
+                
+                # Validation: Check if response object has text/content
+                # This catches the "Response text is None" case early to trigger retry
+                if hasattr(result, 'text') and not result.text:
+                     # Check if it has candidates with parts (fallback)
+                    has_content = False
+                    if hasattr(result, 'candidates') and result.candidates:
+                         for cand in result.candidates:
+                             if hasattr(cand, 'content') and cand.content and hasattr(cand.content, 'parts') and cand.content.parts:
+                                 has_content = True
+                                 break
+                    
+                    if not has_content:
+                        raise ValueError("Empty response from Gemini API (transient)")
+
+                return result
+
+            except Exception as e:
+                error_str = str(e)
+                # Check for transient errors
+                is_transient = (
+                    "429" in error_str or 
+                    "503" in error_str or 
+                    "ResourceExhausted" in error_str or 
+                    "ServiceUnavailable" in error_str or 
+                    "DeadlineExceeded" in error_str or
+                    "Empty response" in error_str or
+                    "Response text is None" in error_str
+                )
+                
+                if retries >= max_retries or not is_transient:
+                    raise e
+                
+                retries += 1
+                # Exponential backoff with jitter
+                delay = (base_delay * (2 ** (retries - 1))) + (random.randint(0, 1000) / 1000)
+                logger.warning(f"Gemini API transient error: {e}. Retrying ({retries}/{max_retries}) in {delay:.2f}s...")
+                await asyncio.sleep(delay)
     
     def _extract_json_from_text(self, text: str | None) -> Any:
         """
@@ -350,16 +402,18 @@ Responde ÚNICAMENTE con JSON válido siguiendo el schema indicado.
             logger.info(f"  Model: {model_to_use}")
             logger.info(f"  Temperature: {temp_to_use}")
             
-            # Generar contenido usando la nueva API
-            response = await asyncio.to_thread(
-                self.client.models.generate_content,
-                model=model_to_use,
-                contents=full_prompt,
-                config={
-                    "temperature": temp_to_use,
-                    "max_output_tokens": max_tokens,
-                    "response_mime_type": "application/json",
-                },
+            # Generar contenido usando la nueva API con reintentos
+            response = await self._retry_with_backoff(
+                lambda: asyncio.to_thread(
+                    self.client.models.generate_content,
+                    model=model_to_use,
+                    contents=full_prompt,
+                    config={
+                        "temperature": temp_to_use,
+                        "max_output_tokens": max_tokens,
+                        "response_mime_type": "application/json",
+                    },
+                )
             )
             
             # Extraer tokens
@@ -438,15 +492,17 @@ Responde ÚNICAMENTE con JSON válido siguiendo el schema indicado.
                 mime_type="application/pdf",
             )
             
-            response = await asyncio.to_thread(
-                self.client.models.generate_content,
-                model=self.model_id,
-                contents=[pdf_part, prompt],
-                config={
-                    "temperature": temperature,
-                    "max_output_tokens": max_output_tokens,
-                    "response_mime_type": "application/json",
-                },
+            response = await self._retry_with_backoff(
+                lambda: asyncio.to_thread(
+                    self.client.models.generate_content,
+                    model=self.model_id,
+                    contents=[pdf_part, prompt],
+                    config={
+                        "temperature": temperature,
+                        "max_output_tokens": max_output_tokens,
+                        "response_mime_type": "application/json",
+                    },
+                )
             )
             
             input_tokens, output_tokens, thinking_tokens = self._extract_token_counts(response)
@@ -511,15 +567,17 @@ Genera las preguntas en formato JSON como un array de objetos.
             
             logger.info("Generating questions with Gemini API")
             
-            response = await asyncio.to_thread(
-                self.client.models.generate_content,
-                model=self.model_id,
-                contents=full_prompt,
-                config={
-                    "temperature": temperature,
-                    "max_output_tokens": 4096,
-                    "response_mime_type": "application/json",
-                },
+            response = await self._retry_with_backoff(
+                lambda: asyncio.to_thread(
+                    self.client.models.generate_content,
+                    model=self.model_id,
+                    contents=full_prompt,
+                    config={
+                        "temperature": temperature,
+                        "max_output_tokens": 4096,
+                        "response_mime_type": "application/json",
+                    },
+                )
             )
             
             input_tokens, output_tokens, thinking_tokens = self._extract_token_counts(response)
@@ -582,14 +640,16 @@ Genera las preguntas en formato JSON como un array de objetos.
             if context:
                 prompt = f"Contexto:\n{context}\n\nPregunta: {message}"
             
-            response = await asyncio.to_thread(
-                self.client.models.generate_content,
-                model=self.model_id,
-                contents=prompt,
-                config={
-                    "temperature": temperature,
-                    "max_output_tokens": 2048,
-                },
+            response = await self._retry_with_backoff(
+                lambda: asyncio.to_thread(
+                    self.client.models.generate_content,
+                    model=self.model_id,
+                    contents=prompt,
+                    config={
+                        "temperature": temperature,
+                        "max_output_tokens": 2048,
+                    },
+                )
             )
             
             input_tokens, output_tokens, thinking_tokens = self._extract_token_counts(response)
@@ -633,15 +693,17 @@ Genera las preguntas en formato JSON como un array de objetos.
         try:
             logger.info("Generating JSON with Gemini API")
             
-            response = await asyncio.to_thread(
-                self.client.models.generate_content,
-                model=self.model_id,
-                contents=prompt,
-                config={
-                    "temperature": temperature,
-                    "max_output_tokens": max_output_tokens,
-                    "response_mime_type": "application/json",
-                },
+            response = await self._retry_with_backoff(
+                lambda: asyncio.to_thread(
+                    self.client.models.generate_content,
+                    model=self.model_id,
+                    contents=prompt,
+                    config={
+                        "temperature": temperature,
+                        "max_output_tokens": max_output_tokens,
+                        "response_mime_type": "application/json",
+                    },
+                )
             )
             
             input_tokens, output_tokens, thinking_tokens = self._extract_token_counts(response)
@@ -723,18 +785,19 @@ Responde UNICAMENTE con JSON valido siguiendo el schema indicado.
                 google_search=types.GoogleSearch()
             )
             
-            # Generar contenido con grounding habilitado
-            # NOTA: No usamos response_mime_type con grounding porque puede causar conflictos
-            response = await asyncio.to_thread(
-                self.client.models.generate_content,
-                model=grounding_model,
-                contents=full_prompt,
-                config={
-                    "temperature": temperature,
-                    "max_output_tokens": max_output_tokens,
-                    "tools": [google_search_tool],
-                    # No usar response_mime_type con grounding - parseamos manualmente
-                },
+            # Generar contenido con grounding habilitado y retry
+            response = await self._retry_with_backoff(
+                lambda: asyncio.to_thread(
+                    self.client.models.generate_content,
+                    model=grounding_model,
+                    contents=full_prompt,
+                    config={
+                        "temperature": temperature,
+                        "max_output_tokens": max_output_tokens,
+                        "tools": [google_search_tool],
+                        # No usar response_mime_type con grounding - parseamos manualmente
+                    },
+                )
             )
             
             # Extraer tokens

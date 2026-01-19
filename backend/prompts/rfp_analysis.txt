@@ -20,17 +20,36 @@ Primero, determina cual de los 4 escenarios aplica:
 
 ## PASO 2: BUSCAR TARIFAS DE MERCADO (GROUNDING)
 
-IMPORTANTE: USA GOOGLE SEARCH para obtener tarifas de mercado actuales.
+IMPORTANTE: USA GOOGLE SEARCH para obtener tarifas de mercado actuales EN LATINOAMERICA.
 
-Para CADA ROL que identifiques, busca:
-- "salario [rol] [pais] 2026 USD mensual"
-- "software engineer salary [pais] monthly usd"
-- "[rol] rate [pais] usd"
+El pais se detecta automaticamente del RFP (campo "country"). USA ESE PAIS para las busquedas.
 
-Ejemplos de busquedas:
-- "salario desarrollador java senior chile usd mensual"
-- "project manager IT salary peru monthly"
-- "devops engineer rate colombia usd"
+Para CADA ROL que identifiques, busca tarifas REALISTAS para Latinoamerica:
+- "salario promedio [rol] [pais] 2025 pesos" o moneda local
+- "sueldo [rol] [pais] mensual"  
+- "[rol] salario [pais] latinoamerica"
+- "glassdoor [rol] [pais]"
+
+NOTA IMPORTANTE SOBRE TARIFAS LATAM:
+- Los salarios en Latinoamerica son SIGNIFICATIVAMENTE menores que en USA/Europa
+- Un Developer Senior en Chile/Colombia/Peru gana entre USD $2,000 - $4,000 mensuales, NO $6,000+
+- Un Project Manager en LATAM gana entre USD $2,500 - $5,000 mensuales
+- Un DevOps/Cloud en LATAM gana entre USD $2,500 - $4,500 mensuales
+- Un QA en LATAM gana entre USD $1,500 - $3,000 mensuales
+- Un Junior/Mid gana 40-60% menos que un Senior
+
+Referencias de tarifas mensuales promedio en USD por pais:
+- Chile: Dev Sr $2,800-$4,000 | PM $3,000-$4,500 | DevOps $3,000-$4,200
+- Colombia: Dev Sr $2,000-$3,200 | PM $2,500-$3,800 | DevOps $2,200-$3,500
+- Peru: Dev Sr $1,800-$3,000 | PM $2,200-$3,500 | DevOps $2,000-$3,200
+- Argentina: Dev Sr $1,500-$2,800 | PM $2,000-$3,200 | DevOps $1,800-$3,000
+- Mexico: Dev Sr $2,200-$3,500 | PM $2,800-$4,000 | DevOps $2,500-$3,800
+- Brasil: Dev Sr $2,500-$4,000 | PM $3,000-$4,500 | DevOps $2,800-$4,200
+
+Ejemplos de busquedas correctas:
+- "salario desarrollador java senior chile 2025"
+- "sueldo project manager TI colombia mensual"
+- "devops engineer salario peru promedio"
 
 ## PASO 3: CALCULAR Y ANALIZAR
 
@@ -215,6 +234,53 @@ Responde SOLO con un JSON valido (sin markdown, sin explicaciones) con este form
 9. Montos sin simbolos de moneda, solo numeros
 10. SIEMPRE busca tarifas actuales con Google Search (grounding)
 11. Responde SOLO con JSON, sin markdown ni explicaciones
+
+## DETECCION DE FECHAS Y TIMELINE (MUY IMPORTANTE)
+
+Los RFPs contienen MULTIPLES fechas. Debes identificar CADA UNA correctamente:
+
+**proposal_deadline (Fecha límite de entrega de propuesta):**
+- Es la fecha LIMITE para PRESENTAR/ENTREGAR la propuesta comercial/técnica
+- Busca frases como: "fecha de entrega", "plazo de presentación", "deadline propuesta", 
+  "enviar propuesta antes de", "recepción de ofertas", "cierre de licitación",
+  "fecha máxima de entrega", "vencimiento del plazo"
+- NO confundir con: fecha de inicio del proyecto, fecha de publicación, fecha de consultas
+
+**questions_deadline (Fecha límite para preguntas):**
+- Es la fecha hasta la cual se pueden hacer CONSULTAS o ACLARACIONES
+- Busca frases como: "fecha de consultas", "período de preguntas", "aclaraciones hasta",
+  "dudas antes de", "ronda de preguntas", "plazo para consultas"
+- Generalmente es ANTERIOR a proposal_deadline
+
+**project_duration (Duración del proyecto):**
+- Es el TIEMPO TOTAL del proyecto/contrato, NO una fecha
+- Busca frases como: "duración del contrato", "plazo de ejecución", "vigencia",
+  "período de X meses", "contrato por X años", "tiempo de implementación"
+- Expresar como: "X meses" o "X años"
+- Si hay fecha de inicio y fin, CALCULAR la diferencia
+
+**Errores comunes a EVITAR:**
+1. NO usar la primera fecha que encuentres como proposal_deadline
+2. NO confundir fecha de PUBLICACIÓN del RFP con fecha de ENTREGA
+3. NO confundir fecha de INICIO del proyecto con fecha de ENTREGA de propuesta
+4. NO confundir fecha de VIGENCIA del contrato con fecha de ENTREGA
+5. Si una fecha dice "publicado el..." o "emitido el...", es fecha de PUBLICACIÓN, NO de entrega
+6. Si una fecha dice "inicio de actividades..." o "comienzo del proyecto...", es fecha de INICIO, NO de entrega
+
+**Ejemplo de análisis correcto:**
+```
+Texto RFP: "Publicado: 15 enero 2026. Consultas hasta: 25 enero 2026. 
+           Entrega de propuestas: 5 febrero 2026. Inicio proyecto: 1 marzo 2026.
+           Duración contrato: 18 meses."
+
+Resultado:
+- proposal_deadline: "2026-02-05" (fecha de ENTREGA de propuestas)
+- questions_deadline: "2026-01-25" (fecha límite de consultas)
+- project_duration: "18 meses" (duración del contrato)
+
+INCORRECTO sería usar "2026-01-15" (es fecha de publicación)
+INCORRECTO sería usar "2026-03-01" (es fecha de inicio del proyecto)
+```
 
 ## CATEGORIAS VALIDAS
 

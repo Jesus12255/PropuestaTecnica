@@ -492,6 +492,7 @@ class RFPAnalyzerService:
 
         except Exception as e:
             logger.error(f"Error in analyze_experience_relevance: {e}")
+            logger.error(f"Stack trace:", exc_info=True)
             return []
 
     async def analyze_chapter_relevance(

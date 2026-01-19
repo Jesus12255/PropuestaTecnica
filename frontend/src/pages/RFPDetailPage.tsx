@@ -12,7 +12,8 @@ import {
   ArrowLeftOutlined, CheckOutlined, CloseOutlined, 
   ExclamationCircleOutlined, CalendarOutlined, DollarOutlined,
   GlobalOutlined, CodeOutlined, TeamOutlined, SearchOutlined, ReloadOutlined,
-  EditOutlined, SaveOutlined, CloseCircleOutlined
+  EditOutlined, SaveOutlined, CloseCircleOutlined, NumberOutlined, AppstoreOutlined,
+  ClockCircleOutlined, RobotOutlined
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { rfpApi } from '../lib/api';
@@ -255,7 +256,7 @@ const RFPDetailPage: React.FC = () => {
       key: 'summary',
       label: (
         <span>
-          <GlobalOutlined />
+          <GlobalOutlined style={{ marginRight: 6 }} />
           Resumen
         </span>
       ),
@@ -297,27 +298,27 @@ const RFPDetailPage: React.FC = () => {
               {!isEditing ? (
                 <>
                   <Descriptions column={2}>
-                    <Descriptions.Item label={<><GlobalOutlined /> País</>}>
+                    <Descriptions.Item label={<><GlobalOutlined style={{ marginRight: 4 }} /> País</>}>
                       {rfp.country || '-'}
                     </Descriptions.Item>
-                    <Descriptions.Item label="Categoría">
+                    <Descriptions.Item label={<><AppstoreOutlined style={{ marginRight: 4 }} /> Categoría</>}>
                       {formatCategory(rfp.category)}
                     </Descriptions.Item>
-                    <Descriptions.Item label="TVT">
+                    <Descriptions.Item label={<><NumberOutlined style={{ marginRight: 4 }} /> TVT</>}>
                       {rfp.tvt || '-'}
                     </Descriptions.Item>
-                    <Descriptions.Item label={<><DollarOutlined /> Presupuesto</>}>
+                    <Descriptions.Item label={<><DollarOutlined style={{ marginRight: 4 }} /> Presupuesto</>}>
                       {rfp.budget_min || rfp.budget_max ? (
                         `${rfp.currency} ${rfp.budget_min?.toLocaleString() || '?'} - ${rfp.budget_max?.toLocaleString() || '?'}`
                       ) : '-'}
                     </Descriptions.Item>
-                    <Descriptions.Item label={<><CalendarOutlined /> Deadline Propuesta</>}>
+                    <Descriptions.Item label={<><CalendarOutlined style={{ marginRight: 4 }} /> Deadline Propuesta</>}>
                       {rfp.proposal_deadline ? dayjs(rfp.proposal_deadline).format('DD/MM/YYYY') : '-'}
                     </Descriptions.Item>
-                    <Descriptions.Item label="Duración Proyecto">
+                    <Descriptions.Item label={<><ClockCircleOutlined style={{ marginRight: 4 }} /> Duración Proyecto</>}>
                       {rfp.project_duration || '-'}
                     </Descriptions.Item>
-                    <Descriptions.Item label="Confianza IA">
+                    <Descriptions.Item label={<><RobotOutlined style={{ marginRight: 4 }} /> Confianza IA</>}>
                       {rfp.confidence_score ? `${rfp.confidence_score}%` : '-'}
                     </Descriptions.Item>
                   </Descriptions>
@@ -424,28 +425,36 @@ const RFPDetailPage: React.FC = () => {
             {/* Risks */}
             {extracted?.risks && extracted.risks.length > 0 && (
               <Card 
-                title={<><ExclamationCircleOutlined /> Riesgos Identificados</>}
+                title={<><ExclamationCircleOutlined style={{ marginRight: 6 }} /> Riesgos Identificados</>}
                 style={{ marginBottom: 24 }}
               >
                 <List
                   dataSource={extracted.risks}
-                  renderItem={(risk) => (
-                    <List.Item>
-                      <List.Item.Meta
-                        avatar={
-                          <Tag color={
-                            risk.severity === 'critical' ? 'red' :
-                            risk.severity === 'high' ? 'orange' :
-                            risk.severity === 'medium' ? 'gold' : 'default'
-                          }>
-                            {risk.severity.toUpperCase()}
-                          </Tag>
-                        }
-                        title={risk.category.replace(/_/g, ' ').toUpperCase()}
-                        description={risk.description}
-                      />
-                    </List.Item>
-                  )}
+                  renderItem={(risk) => {
+                    const severityLabels: Record<string, string> = {
+                      critical: 'CRÍTICO',
+                      high: 'ALTO',
+                      medium: 'MEDIO',
+                      low: 'BAJO'
+                    };
+                    return (
+                      <List.Item>
+                        <List.Item.Meta
+                          avatar={
+                            <Tag color={
+                              risk.severity === 'critical' ? 'red' :
+                              risk.severity === 'high' ? 'orange' :
+                              risk.severity === 'medium' ? 'gold' : 'default'
+                            } style={{ minWidth: 70, textAlign: 'center' }}>
+                              {severityLabels[risk.severity] || risk.severity.toUpperCase()}
+                            </Tag>
+                          }
+                          title={risk.category.replace(/_/g, ' ').toUpperCase()}
+                          description={risk.description}
+                        />
+                      </List.Item>
+                    );
+                  }}
                 />
               </Card>
             )}
@@ -532,7 +541,7 @@ const RFPDetailPage: React.FC = () => {
       key: 'team',
       label: (
         <span>
-          <TeamOutlined />
+          <TeamOutlined style={{ marginRight: 6 }} />
           Equipo Estimado
         </span>
       ),
@@ -547,7 +556,7 @@ const RFPDetailPage: React.FC = () => {
       key: 'costs',
       label: (
         <span>
-          <DollarOutlined />
+          <DollarOutlined style={{ marginRight: 6 }} />
           Costos
         </span>
       ),
@@ -562,7 +571,7 @@ const RFPDetailPage: React.FC = () => {
       key: 'candidates',
       label: (
         <span>
-          <SearchOutlined />
+          <SearchOutlined style={{ marginRight: 6 }} />
           Candidatos TIVIT
         </span>
       ),
