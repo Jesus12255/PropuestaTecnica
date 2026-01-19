@@ -133,8 +133,15 @@ async def upload_rfp(
         
     except Exception as e:
         logger.error(f"Error analyzing RFP {rfp.id}: {e}")
-        rfp.status = RFPStatus.ERROR.value
-        await db.commit()
+        try:
+            await db.rollback()
+            # Re-fetch to avoid StaleDataError
+            rfp = await db.get(RFPSubmission, rfp.id)
+            if rfp:
+                rfp.status = RFPStatus.ERROR.value
+                await db.commit()
+        except Exception as db_e:
+            logger.error(f"Failed to update RFP status to ERROR: {db_e}")
         
         raise HTTPException(
             status_code=500,

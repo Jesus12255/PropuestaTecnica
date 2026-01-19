@@ -302,7 +302,15 @@ class RFPAnalyzerService:
                 analysis_mode=analysis_mode,
             )
         
-        logger.info(f"RFP analysis completed: {result}")
+        if isinstance(result, list):
+            if len(result) > 0 and isinstance(result[0], dict):
+                 logger.warning("Gemini returned a list instead of a dict. Using first item.")
+                 result = result[0]
+            else:
+                 logger.error(f"Gemini returned unexpected list format: {result}")
+                 result = {"error": "Invalid response format from AI", "raw": result}
+        
+        logger.info(f"RFP analysis completed: {result.get('title', 'Unknown Title')}")
         return result
     
     async def analyze_rfp(self, gcs_uri: str, use_grounding: bool = True, db: AsyncSession | None = None) -> dict[str, Any]:
