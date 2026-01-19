@@ -122,7 +122,7 @@ class ProposalGeneratorService:
         # Extract the combined data dictionary which contains merged DB and JSON fields
         data = rfp_data.get("extracted_data", {}) or {}
 
-        country =  rfp.country.lower()
+        country = (rfp.country or "").lower()
         sede_tivit = "TIVIT Latam"
         direccion_tivit = "Dirección General"
         
