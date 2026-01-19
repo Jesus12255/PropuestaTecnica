@@ -3,7 +3,7 @@
  */
 import React, { useState } from 'react';
 import { Table, Tag, Space, Typography, Tooltip, Empty, Card, Statistic, Row, Col, InputNumber } from 'antd';
-import { TeamOutlined, SafetyCertificateOutlined, CodeOutlined } from '@ant-design/icons';
+import { TeamOutlined } from '@ant-design/icons';
 import type { TeamEstimation, RoleEstimation, Seniority } from '../../types';
 import type { ColumnsType } from 'antd/es/table';
 
@@ -44,7 +44,7 @@ const TeamEstimationView: React.FC<TeamEstimationViewProps> = ({ teamEstimation,
   // Función para actualizar la cantidad de un rol
   const handleQuantityChange = (roleId: string, newQuantity: number | null) => {
     if (newQuantity === null || newQuantity < 1) return;
-    
+
     setEditableRoles(prevRoles =>
       prevRoles.map(role =>
         role.role_id === roleId
@@ -239,13 +239,13 @@ const TeamEstimationView: React.FC<TeamEstimationViewProps> = ({ teamEstimation,
             <Statistic
               title="Tipo de Estimación"
               value={
-                teamEstimation.source === 'client_specified' 
-                  ? 'Cliente especificó' 
+                teamEstimation.source === 'client_specified'
+                  ? 'Cliente especificó'
                   : 'IA sugiere'
               }
-              valueStyle={{ 
+              valueStyle={{
                 color: teamEstimation.source === 'client_specified' ? '#1890ff' : '#722ed1',
-                fontSize: 14 
+                fontSize: 14
               }}
             />
             <Typography.Text type="secondary" style={{ fontSize: 11 }}>
@@ -271,8 +271,8 @@ const TeamEstimationView: React.FC<TeamEstimationViewProps> = ({ teamEstimation,
 
       {/* Source info */}
       <Tag color={teamEstimation.source === 'client_specified' ? 'blue' : 'purple'}>
-        {teamEstimation.source === 'client_specified' 
-          ? 'Equipo especificado por el cliente' 
+        {teamEstimation.source === 'client_specified'
+          ? 'Equipo especificado por el cliente'
           : 'Equipo estimado por IA'}
       </Tag>
 
