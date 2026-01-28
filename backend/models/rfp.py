@@ -13,6 +13,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 
 from core.database import Base
+from core.database import Base
 
 
 class RFPStatus(str, PyEnum):
@@ -107,7 +108,7 @@ class RFPSubmission(Base):
     # Fechas
     proposal_deadline: Mapped[datetime | None] = mapped_column(Date, nullable=True)
     questions_deadline: Mapped[datetime | None] = mapped_column(Date, nullable=True)
-    project_duration: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    project_duration: Mapped[str | None] = mapped_column(String(255), nullable=True)
     
     # Métricas de análisis
     confidence_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -137,6 +138,12 @@ class RFPSubmission(Base):
     questions: Mapped[list["RFPQuestion"]] = relationship(
         "RFPQuestion", 
         back_populates="rfp",
+        cascade="all, delete-orphan"
+    )
+
+    files: Mapped[list["Archivo"]] = relationship(
+        "Archivo",
+        backref="rfp_submission", # Use backref or explicit relationship if defined in Archivo
         cascade="all, delete-orphan"
     )
     
@@ -201,3 +208,6 @@ class RFPQuestion(Base):
     
     def __repr__(self) -> str:
         return f"<RFPQuestion {self.id} - {self.category}>"
+
+
+

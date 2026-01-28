@@ -15,14 +15,30 @@ from models.user import User
 security = HTTPBearer()
 
 
+
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
+    access_token: str | None = None, # Query param support
     db: AsyncSession = Depends(get_db),
 ) -> User:
     """
     Dependencia para obtener el usuario actual desde el token JWT.
+    Soporta Header 'Authorization: Bearer <token>' y Query param '?access_token=<token>'
     """
-    token = credentials.credentials
+    token = None
+    if credentials:
+        token = credentials.credentials
+    elif access_token:
+        token = access_token
+    
+    if not token:
+        # Fallback for openapi manual testing without auth
+        # Or simply reject
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token no proporcionado",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     
     payload = decode_access_token(token)
     if payload is None:

@@ -7,6 +7,7 @@ from uuid import UUID
 from enum import Enum
 
 from pydantic import BaseModel, Field, ConfigDict
+from .storage_schemas import ArchivoSchema
 
 
 # ============ ENUMS ============
@@ -79,6 +80,7 @@ class RFPDecision(BaseModel):
 
 class RFPUpdate(BaseModel):
     """Schema for updating RFP fields."""
+    title: str | None = None
     client_name: str | None = None
     country: str | None = None
     category: str | None = None
@@ -112,6 +114,7 @@ class RFPSummary(BaseModel):
     
     id: UUID
     file_name: str
+    title: str | None = None
     status: RFPStatusEnum
     client_name: str | None = None
     country: str | None = None
@@ -126,6 +129,8 @@ class RFPSummary(BaseModel):
     decision: str | None = None
     created_at: datetime
     analyzed_at: datetime | None = None
+
+
 
 
 class RFPDetail(RFPSummary):
@@ -143,6 +148,8 @@ class RFPDetail(RFPSummary):
     decided_at: datetime | None = None
     updated_at: datetime
     questions: list[RFPQuestion] = []
+    files: list[ArchivoSchema] = []
+   
 
 
 # ============ DASHBOARD SCHEMAS ============
@@ -194,6 +201,8 @@ class SLAItem(BaseModel):
     description: str
     metric: str | None = None
     is_aggressive: bool = False
+    reference_document: str | None = None
+    source: str | None = None  # "detectado por ia" | "detectado en rfp"
 
 
 class PenaltyItem(BaseModel):
@@ -201,6 +210,8 @@ class PenaltyItem(BaseModel):
     description: str
     amount: str | None = None
     is_high: bool = False
+    reference_document: str | None = None
+    source: str | None = None  # "detectado por ia" | "detectado en rfp"
 
 
 class RiskItem(BaseModel):
@@ -208,6 +219,7 @@ class RiskItem(BaseModel):
     category: str
     description: str
     severity: str = "medium"  # low, medium, high, critical
+    reference_document: str | None = None  # Pagina, seccion, etc.
 
 
 

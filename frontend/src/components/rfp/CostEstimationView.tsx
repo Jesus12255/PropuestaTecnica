@@ -1,11 +1,14 @@
 /**
  * Componente para visualizar la estimación de costos
- * Actualizado: Simplificado con cálculos de costo total por duración
+ * Actualizado: Diseño Premium Red & Black
  */
 import React, { useState, useEffect } from 'react';
-import { Card, Table, Tag, Space, Typography, Empty, Row, Col, Statistic, InputNumber } from 'antd';
-import { 
-  DollarOutlined, TeamOutlined, CalendarOutlined, PercentageOutlined,
+import { Table, Tag, Space, Typography, Empty, Row, Col, InputNumber } from 'antd';
+import {
+  DollarOutlined,
+  TeamOutlined,
+  CalendarOutlined,
+  PercentageOutlined,
   CalculatorOutlined
 } from '@ant-design/icons';
 import type { CostEstimation, CostBreakdownItem } from '../../types';
@@ -32,36 +35,35 @@ const CostEstimationView: React.FC<CostEstimationViewProps> = ({ costEstimation,
   // Si está cargando
   if (loading) {
     return (
-      <Card>
-        <Space direction="vertical" style={{ width: '100%', textAlign: 'center', padding: '40px' }}>
-          <Text>Cargando estimación de costos...</Text>
+      <div className="content-panel" style={{ textAlign: 'center', padding: '60px' }}>
+        <Space direction="vertical">
+          <DollarOutlined spin style={{ fontSize: 32, color: 'var(--color-primary)' }} />
+          <Text style={{ marginTop: 16 }}>Calculando estimación financiera...</Text>
         </Space>
-      </Card>
+      </div>
     );
   }
 
   // Si no hay cost_estimation
   if (!costEstimation) {
     return (
-      <Card>
-        <Empty
-          description={
-            <Space direction="vertical" size="small">
-              <Text>No hay estimación de costos disponible</Text>
-              <Text type="secondary" style={{ fontSize: 12 }}>
-                La estimación de costos se genera automáticamente al analizar el RFP.
-              </Text>
-            </Space>
-          }
-          image={Empty.PRESENTED_IMAGE_SIMPLE}
-        />
-      </Card>
+      <Empty
+        description={
+          <Space direction="vertical" size="small">
+            <Text>No hay estimación de costos disponible</Text>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              La estimación de costos se genera automáticamente al analizar el RFP.
+            </Text>
+          </Space>
+        }
+        image={Empty.PRESENTED_IMAGE_SIMPLE}
+      />
     );
   }
 
   const { breakdown = [], currency = 'USD' } = costEstimation;
   const durationMonths = costEstimation.duration_months || 1;
-  
+
   // Cálculos
   const monthlyBase = costEstimation.monthly_base ?? 0;
   const marginAmount = monthlyBase * (marginPercent / 100);
@@ -71,55 +73,57 @@ const CostEstimationView: React.FC<CostEstimationViewProps> = ({ costEstimation,
   // Columnas de la tabla con Costo Mercado/Mes y % Tiempo
   const columns: ColumnsType<CostBreakdownItem> = [
     {
-      title: 'Rol',
+      title: 'ROL',
       dataIndex: 'role',
       key: 'role',
-      render: (role: string) => <Text strong>{role}</Text>,
+      render: (role: string) => <Text strong style={{ color: 'var(--text-primary)' }}>{role}</Text>,
     },
     {
-      title: 'Cantidad',
+      title: 'CANTIDAD',
       dataIndex: 'quantity',
       key: 'quantity',
       width: 100,
       align: 'center',
-      render: (qty: number) => <Tag color="blue">{qty}</Tag>,
+      render: (qty: number) => <Tag style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', fontSize: 13, padding: '2px 10px' }}>{qty}</Tag>,
     },
     {
-      title: 'Costo Mercado/Mes',
+      title: 'COSTO MERCADO/MES',
       dataIndex: 'monthly_rate',
       key: 'monthly_rate',
-      width: 160,
+      width: 180,
       align: 'right',
       render: (rate: number) => (
-        <Text>{currency} {rate.toLocaleString()}</Text>
+        <Text style={{ fontFamily: 'monospace', color: 'var(--text-secondary)' }}>
+          {currency} {rate.toLocaleString()}
+        </Text>
       ),
     },
     {
-      title: '% Dedicación',
+      title: '% DEDICACIÓN',
       key: 'dedication_percent',
-      width: 120,
+      width: 140,
       align: 'center',
-      render: () => <Tag color="cyan">100%</Tag>,
+      render: () => <Tag color="cyan" style={{ margin: 0 }}>100%</Tag>,
     },
     {
-      title: 'Subtotal/Mes',
+      title: 'SUBTOTAL/MES',
       dataIndex: 'subtotal',
       key: 'subtotal',
-      width: 150,
+      width: 160,
       align: 'right',
       render: (subtotal: number) => (
-        <Text strong style={{ color: '#1890ff' }}>
+        <Text strong style={{ color: 'var(--color-primary)', fontFamily: 'monospace' }}>
           {currency} {subtotal.toLocaleString()}
         </Text>
       ),
     },
     {
-      title: `Total (${durationMonths} meses)`,
+      title: `TOTAL (${durationMonths} MESES)`,
       key: 'total_duration',
-      width: 160,
+      width: 180,
       align: 'right',
       render: (_: unknown, record: CostBreakdownItem) => (
-        <Text strong style={{ color: '#52c41a' }}>
+        <Text strong style={{ color: 'var(--color-success)', fontFamily: 'monospace' }}>
           {currency} {(record.subtotal * durationMonths).toLocaleString()}
         </Text>
       ),
@@ -133,90 +137,121 @@ const CostEstimationView: React.FC<CostEstimationViewProps> = ({ costEstimation,
   return (
     <Space direction="vertical" size="large" style={{ width: '100%' }}>
       {/* Resumen Principal */}
-      <Card>
+      <div className="content-panel" style={{ padding: 24, background: 'var(--bg-card)' }}>
         <Row gutter={[24, 24]}>
           {/* Costo Base Mensual */}
           <Col xs={24} sm={12} md={6}>
-            <Card 
-              size="small" 
-              style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', border: 'none' }}
-            >
-              <Statistic
-                title={<Text style={{ color: 'rgba(255,255,255,0.85)' }}>Costo Base Mensual</Text>}
-                value={monthlyBase}
-                prefix={<DollarOutlined />}
-                formatter={(value) => `${currency} ${Number(value).toLocaleString()}`}
-                valueStyle={{ color: '#fff', fontSize: 20 }}
-              />
-            </Card>
+            <div style={{
+              background: 'linear-gradient(135deg, rgba(24, 144, 255, 0.1) 0%, rgba(24, 144, 255, 0.05) 100%)',
+              padding: '20px',
+              borderRadius: 12,
+              border: '1px solid rgba(24, 144, 255, 0.2)',
+              height: '100%'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
+                <div style={{ background: '#1890ff', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                  <DollarOutlined style={{ color: 'white' }} />
+                </div>
+                <Text style={{ color: 'var(--text-secondary)', fontSize: 13, textTransform: 'uppercase' }}>Costo Base / Mes</Text>
+              </div>
+              <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
+                {currency} {monthlyBase.toLocaleString()}
+              </div>
+            </div>
           </Col>
 
           {/* Margen Editable */}
           <Col xs={24} sm={12} md={6}>
-            <Card size="small" style={{ background: '#1f1f1f', border: '1px solid #303030' }}>
-              <Space direction="vertical" size={4} style={{ width: '100%' }}>
-                <Text type="secondary" style={{ fontSize: 12 }}>
-                  <PercentageOutlined /> Margen (editable)
-                </Text>
+            <div style={{
+              background: 'var(--bg-tertiary)',
+              padding: '20px',
+              borderRadius: 12,
+              border: '1px solid var(--border-color)',
+              height: '100%'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12, justifyContent: 'space-between' }}>
                 <Space>
-                  <InputNumber
-                    value={marginPercent}
-                    onChange={(value) => setMarginPercent(value || 0)}
-                    min={0}
-                    max={100}
-                    step={5}
-                    formatter={(value) => `${value}%`}
-                    parser={(value) => Number(value?.replace('%', '') || 0)}
-                    style={{ width: 100 }}
-                  />
-                  <Text type="secondary">
-                    = {currency} {marginAmount.toLocaleString()}
-                  </Text>
+                  <PercentageOutlined style={{ color: 'var(--color-warning)' }} />
+                  <Text style={{ color: 'var(--text-secondary)', fontSize: 13, textTransform: 'uppercase' }}>Margen (Target)</Text>
                 </Space>
-              </Space>
-            </Card>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <InputNumber
+                  value={marginPercent}
+                  onChange={(value) => setMarginPercent(value || 0)}
+                  min={0}
+                  max={100}
+                  step={5}
+                  formatter={(value) => `${value}%`}
+                  parser={(value) => Number(value?.replace('%', '') || 0)}
+                  style={{ width: 80, borderColor: 'var(--border-color)' }}
+                />
+                <div>
+                  <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>Valor Margen</Text>
+                  <Text strong style={{ color: 'var(--color-warning)' }}>+ {currency} {marginAmount.toLocaleString()}</Text>
+                </div>
+              </div>
+            </div>
           </Col>
 
           {/* Duración del Proyecto */}
           <Col xs={24} sm={12} md={6}>
-            <Card size="small" style={{ background: '#1a3a1a', border: '1px solid #274d27' }}>
-              <Statistic
-                title={<Text style={{ color: '#95de64' }}><CalendarOutlined /> Duración Proyecto</Text>}
-                value={durationMonths}
-                suffix="meses"
-                valueStyle={{ color: '#95de64', fontSize: 20 }}
-              />
-            </Card>
+            <div style={{
+              background: 'var(--bg-tertiary)',
+              padding: '20px',
+              borderRadius: 12,
+              border: '1px solid var(--border-color)',
+              height: '100%'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
+                <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-color)', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                  <CalendarOutlined style={{ color: 'var(--text-primary)' }} />
+                </div>
+                <Text style={{ color: 'var(--text-secondary)', fontSize: 13, textTransform: 'uppercase' }}>Duración</Text>
+              </div>
+              <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)' }}>
+                {durationMonths} <span style={{ fontSize: 14, fontWeight: 400, color: 'var(--text-secondary)' }}>Meses</span>
+              </div>
+            </div>
           </Col>
 
           {/* Presupuesto Total */}
           <Col xs={24} sm={12} md={6}>
-            <Card 
-              size="small" 
-              style={{ background: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)', border: 'none' }}
-            >
-              <Statistic
-                title={<Text style={{ color: 'rgba(255,255,255,0.85)' }}>Presupuesto Total</Text>}
-                value={totalProjectCost}
-                prefix={<CalculatorOutlined />}
-                formatter={(value) => `${currency} ${Number(value).toLocaleString()}`}
-                valueStyle={{ color: '#fff', fontSize: 20, fontWeight: 'bold' }}
-              />
-            </Card>
+            <div style={{
+              background: 'linear-gradient(135deg, rgba(82, 196, 26, 0.2) 0%, rgba(82, 196, 26, 0.05) 100%)',
+              padding: '20px',
+              borderRadius: 12,
+              border: '1px solid rgba(82, 196, 26, 0.3)',
+              height: '100%'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
+                <div style={{ background: '#52c41a', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                  <CalculatorOutlined style={{ color: 'white' }} />
+                </div>
+                <Text style={{ color: 'var(--text-secondary)', fontSize: 13, textTransform: 'uppercase' }}>Total Proyecto</Text>
+              </div>
+              <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--color-success)', fontFamily: 'monospace' }}>
+                {currency} {totalProjectCost.toLocaleString()}
+              </div>
+            </div>
           </Col>
         </Row>
-      </Card>
+      </div>
 
       {/* Desglose de Costos por Rol */}
-      <Card 
-        size="small" 
-        title={
+      <div className="content-panel" style={{ overflow: 'hidden' }}>
+        <div style={{
+          padding: '16px 24px',
+          borderBottom: '1px solid var(--border-color)',
+          background: 'var(--bg-tertiary)'
+        }}>
           <Space>
-            <TeamOutlined />
-            <span>Desglose de Costos por Rol</span>
+            <TeamOutlined style={{ color: 'var(--color-primary)' }} />
+            <Title level={5} style={{ margin: 0, color: 'var(--text-primary)' }}>Desglose de Costos por Rol</Title>
           </Space>
-        }
-      >
+        </div>
+
         {breakdown && breakdown.length > 0 ? (
           <Table
             columns={columns}
@@ -224,53 +259,50 @@ const CostEstimationView: React.FC<CostEstimationViewProps> = ({ costEstimation,
             rowKey="role"
             loading={loading}
             pagination={false}
-            size="small"
+            size="middle"
             summary={() => (
               <>
-                <Table.Summary.Row style={{ background: 'rgba(24, 144, 255, 0.1)' }}>
+                <Table.Summary.Row style={{ background: 'var(--bg-tertiary)' }}>
                   <Table.Summary.Cell index={0} colSpan={4}>
-                    <Text strong>Total Base (sin margen)</Text>
+                    <Text strong style={{ color: 'var(--text-secondary)' }}>TOTAL BASE (SIN MARGEN)</Text>
                   </Table.Summary.Cell>
                   <Table.Summary.Cell index={4} align="right">
-                    <Text strong style={{ color: '#1890ff' }}>
+                    <Text strong style={{ color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
                       {currency} {totalMonthly.toLocaleString()}
                     </Text>
                   </Table.Summary.Cell>
                   <Table.Summary.Cell index={5} align="right">
-                    <Text strong style={{ color: '#52c41a' }}>
+                    <Text strong style={{ color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
                       {currency} {totalProject.toLocaleString()}
                     </Text>
                   </Table.Summary.Cell>
                 </Table.Summary.Row>
-                <Table.Summary.Row style={{ background: 'rgba(82, 196, 26, 0.15)' }}>
+                <Table.Summary.Row style={{ background: 'rgba(82, 196, 26, 0.1)' }}>
                   <Table.Summary.Cell index={0} colSpan={4}>
-                    <Title level={5} style={{ margin: 0, color: '#52c41a' }}>TOTAL CON MARGEN</Title>
+                    <Text strong style={{ color: 'var(--color-success)', textTransform: 'uppercase' }}>TOTAL CON MARGEN ({marginPercent}%)</Text>
                   </Table.Summary.Cell>
                   <Table.Summary.Cell index={4} align="right">
-                    <Title level={5} style={{ margin: 0, color: '#52c41a' }}>
+                    <Text strong style={{ color: 'var(--color-success)', fontFamily: 'monospace', fontSize: 16 }}>
                       {currency} {monthlyWithMargin.toLocaleString()}
-                    </Title>
+                    </Text>
                   </Table.Summary.Cell>
                   <Table.Summary.Cell index={5} align="right">
-                    <Title level={5} style={{ margin: 0, color: '#52c41a' }}>
+                    <Text strong style={{ color: 'var(--color-success)', fontFamily: 'monospace', fontSize: 16 }}>
                       {currency} {totalProjectCost.toLocaleString()}
-                    </Title>
+                    </Text>
                   </Table.Summary.Cell>
                 </Table.Summary.Row>
               </>
             )}
           />
         ) : (
-          <Empty 
-            description={
-              <Space direction="vertical" size="small">
-                <Text type="secondary">No hay desglose de costos disponible</Text>
-              </Space>
-            }
+          <Empty
+            description="No hay desglose de costos disponible"
             image={Empty.PRESENTED_IMAGE_SIMPLE}
+            style={{ margin: '40px 0' }}
           />
         )}
-      </Card>
+      </div>
     </Space>
   );
 };

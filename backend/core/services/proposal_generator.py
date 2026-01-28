@@ -126,7 +126,7 @@ class ProposalGeneratorService:
         sede_tivit = "TIVIT Latam"
         direccion_tivit = "Dirección General"
         
-        if Constantes.Countries.PERU in country:
+        if Constantes.Countries.PERU in country or "peru" in country:
             sede_tivit = "TIVIT Perú Tercerización de Procesos, Servicios y Tecnología S.A.C."
             direccion_tivit = "Av. Antonio Miró Quesada 425, Piso 18, Oficina 1811, Magdalena del Mar, Lima, Perú"
         elif Constantes.Countries.CHILE in country:

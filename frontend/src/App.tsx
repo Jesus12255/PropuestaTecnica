@@ -15,6 +15,7 @@ import SettingsPage from './pages/SettingsPage';
 import CertificationsPage from './pages/CertificationsPage';
 import ExperiencesPage from './pages/ExperiencesPage';
 import ChaptersPage from './pages/ChaptersPage';
+import StoragePage from './pages/Storage/StoragePage';
 
 // Componente para rutas protegidas
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -178,6 +179,16 @@ const App: React.FC = () => {
           element={
             <ProtectedRoute>
               <SettingsPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Mis Archivos */}
+        <Route
+          path="/storage"
+          element={
+            <ProtectedRoute>
+              <StoragePage />
             </ProtectedRoute>
           }
         />

@@ -3,5 +3,10 @@ from .rfp import RFPSubmission, RFPQuestion, RFPStatus, RFPCategory, Recommendat
 from .user import User
 from .certification import Certification
 from .experience import Experience
+from .storage import Carpeta, Archivo, UsuarioCarpeta
 
-__all__ = ["RFPSubmission", "RFPQuestion", "RFPStatus", "RFPCategory", "Recommendation", "User", "Certification", "Experience"]
+__all__ = [
+    "RFPSubmission", "RFPQuestion", "RFPStatus", "RFPCategory", "Recommendation", 
+    "User", "Certification", "Experience",
+    "Carpeta", "Archivo", "UsuarioCarpeta"
+]

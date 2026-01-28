@@ -1,6 +1,9 @@
 import os
 import sys
 from logging.config import fileConfig
+from dotenv import load_dotenv
+
+load_dotenv()
 
 from sqlalchemy import engine_from_config, create_engine
 from sqlalchemy import pool
@@ -38,7 +41,10 @@ config = context.config
 
 # Get database url from environment variable
 
-db_url = os.getenv('DATABASE_URL')
+# Get database url from environment variable
+from backend.core.config import settings
+
+db_url = settings.DATABASE_URL
 
 if db_url:
 

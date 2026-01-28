@@ -15,19 +15,49 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
     
+    # Environment (development or production)
+    ENV: str = Field(
+        default="development",
+        description="Environment: development or production"
+    )
+    
     # API
     API_V1_PREFIX: str = "/api/v1"
     
-    # Database (Cloud SQL PostgreSQL)
-    DATABASE_URL: str = Field(
-        default="postgresql+asyncpg://postgres:postgres@localhost:5432/rfp_analyzer",
-        description="PostgreSQL connection string"
+    # Database URLs - Production (MUST be set in .env)
+    DATABASE_URL_PRODUCTION: str = Field(
+        default="",
+        description="PostgreSQL connection string for PRODUCTION - REQUIRED in .env"
     )
+    
+    # Database URLs - Development (MUST be set in .env)
+    DATABASE_URL_DEVELOPMENT: str = Field(
+        default="",
+        description="PostgreSQL connection string for DEVELOPMENT - REQUIRED in .env"
+    )
+    
+    @property
+    def DATABASE_URL(self) -> str:
+        """
+        Returns the appropriate database URL based on the ENV setting.
+        - ENV=production -> DATABASE_URL_PRODUCTION
+        - ENV=development -> DATABASE_URL_DEVELOPMENT
+        """
+        if self.ENV.lower() == "production":
+            return self.DATABASE_URL_PRODUCTION
+        else:
+            return self.DATABASE_URL_DEVELOPMENT
     
     # GCP Settings
     GCP_PROJECT_ID: str = Field(default="squad-ia-latam", description="Google Cloud Project ID")
     GCP_LOCATION: str = Field(default="us-central1", description="GCP Region")
     GCS_BUCKET: str = Field(default="caso01-documents", description="Cloud Storage bucket for RFP files")
+    
+    # Storage Configuration
+    USE_GCS: bool = Field(
+        default=False,
+        description="Enable Google Cloud Storage (True) or use only local storage (False)"
+    )
     
     # GCP Credentials (Service Account JSON path - for Cloud Storage)
     GOOGLE_APPLICATION_CREDENTIALS: str | None = Field(
@@ -51,11 +81,24 @@ class Settings(BaseSettings):
         description="Gemini model to use (gemini-3-pro-preview es el más potente para análisis complejos)"
     )
     
-    # MCP Talent Search Server
-    MCP_TALENT_URL: str = Field(
-        default="https://mcp-tivit.eastus2.cloudapp.azure.com",
-        description="URL of the MCP Talent Search Server"
+    # MCP Talent Search Server - Development (Docker)
+    MCP_TALENT_URL_DEVELOPMENT: str = Field(
+        default="http://mcp:8080",
+        description="MCP URL for development (Docker container)"
     )
+    
+    # MCP Talent Search Server - Production
+    MCP_TALENT_URL_PRODUCTION: str = Field(
+        default="",
+        description="MCP URL for production"
+    )
+    
+    @property
+    def MCP_TALENT_URL(self) -> str:
+        """Returns MCP URL based on ENV setting."""
+        if self.ENV.lower() == "production":
+            return self.MCP_TALENT_URL_PRODUCTION
+        return self.MCP_TALENT_URL_DEVELOPMENT
     
     # JWT Settings
     JWT_SECRET_KEY: str = Field(default="change-me-in-production", description="JWT secret key")

@@ -9,6 +9,8 @@ gcp-credentials.json
 *.pem
 *.key
 
+#Agentes
+.agent/
 # Python
 __pycache__/
 *.py[cod]

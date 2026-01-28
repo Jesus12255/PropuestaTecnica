@@ -1,6 +1,6 @@
 /**
  * Estilos globales para RFP Analyzer
- * Tema: Negro con Rojo (Dark Mode Premium)
+ * Tema: Negro con Rojo (Dark Mode Premium - Solid & Professional)
  */
 
 /* Google Fonts - Inter */
@@ -14,50 +14,70 @@
 }
 
 :root {
-  /* Colores principales - TIVIT Theme */
+  /* Colores principales - TIVIT Theme Premium */
   --color-primary: #E31837;
-  --color-primary-hover: #FF2D4D;
-  --color-primary-active: #C41230;
+  /* TIVIT Red - Vivid */
+  --color-primary-hover: #FF3355;
+  /* Lighter vivid red */
+  --color-primary-active: #B00020;
+  /* Darker deep red */
   --color-secondary: #FF4D4D;
-  
-  --color-success: #52c41a;
-  --color-warning: #faad14;
-  --color-error: #ff4d4f;
-  --color-info: #1890ff;
-  
-  /* Fondos oscuros */
-  --bg-primary: #0A0A0B;
-  --bg-secondary: #111113;
-  --bg-tertiary: #1A1A1D;
-  --bg-card: #141416;
-  --bg-elevated: #1E1E21;
-  
+
+  --color-success: #10B981;
+  /* Modern emerald green */
+  --color-warning: #F59E0B;
+  /* Warm amber */
+  --color-error: #EF4444;
+  /* Vivid red for errors */
+  --color-info: #3B82F6;
+  /* Bright blue */
+
+  /* Fondos oscuros - Solid & Professional */
+  --bg-primary: #050505;
+  /* Pure dark background */
+  --bg-secondary: #0A0A0A;
+  /* Sidebar background */
+  --bg-tertiary: #141414;
+  /* Input/Secondary backgrounds */
+  --bg-card: #141414;
+  /* Solid Card background */
+  --bg-elevated: #1F1F1F;
+  /* Dropdowns, Modals */
+
   /* Bordes */
-  --border-color: #2A2A2E;
-  --border-color-light: #3A3A3E;
-  
+  --border-color: #262626;
+  /* Neutral dark border */
+  --border-color-light: #434343;
+  /* Lighter border for hover */
+  --border-color-hover: #E31837;
+  /* Brand highlight */
+
   /* Texto */
-  --text-primary: rgba(255, 255, 255, 0.95);
-  --text-secondary: rgba(255, 255, 255, 0.65);
+  --text-primary: #FFFFFF;
+  --text-secondary: rgba(255, 255, 255, 0.85);
+  /* Increased contrast */
   --text-tertiary: rgba(255, 255, 255, 0.45);
   --text-disabled: rgba(255, 255, 255, 0.25);
-  
-  /* Sombras */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
-  --shadow-glow: 0 0 20px rgba(227, 24, 55, 0.3);
-  
+
+  /* Sombras - Subtle */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.6);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.8);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.9);
+  --shadow-glow: none;
+  /* Removed glow for cleaner look */
+  --shadow-glow-sm: none;
+
   /* Bordes redondeados */
-  --border-radius-sm: 6px;
+  --border-radius-sm: 4px;
+  /* Professional square/round mix */
   --border-radius: 8px;
   --border-radius-lg: 12px;
   --border-radius-xl: 16px;
-  
+
   /* Transiciones */
-  --transition-fast: 0.15s ease;
-  --transition-normal: 0.25s ease;
-  --transition-slow: 0.4s ease;
+  --transition-fast: 0.1s ease;
+  --transition-normal: 0.2s ease;
+  --transition-slow: 0.3s ease;
 }
 
 html,
@@ -102,12 +122,12 @@ a:hover {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border-color-light);
+  background: var(--border-color);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-primary);
+  background: #555;
 }
 
 /* Loading spinner */
@@ -121,8 +141,13 @@ a:hover {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* ============================================
@@ -134,13 +159,12 @@ a:hover {
   background: var(--bg-card) !important;
   border: 1px solid var(--border-color) !important;
   border-radius: var(--border-radius) !important;
-  box-shadow: var(--shadow-sm) !important;
-  transition: all var(--transition-normal) !important;
+  box-shadow: none !important;
+  /* Flat design */
 }
 
 .ant-card:hover {
   border-color: var(--border-color-light) !important;
-  box-shadow: var(--shadow-md) !important;
 }
 
 .ant-card-head {
@@ -160,6 +184,7 @@ a:hover {
 /* Tables */
 .ant-table-wrapper {
   background: var(--bg-card) !important;
+  border: 1px solid var(--border-color) !important;
   border-radius: var(--border-radius) !important;
   overflow: hidden !important;
 }
@@ -169,32 +194,38 @@ a:hover {
   color: var(--text-primary) !important;
 }
 
-.ant-table-thead > tr > th {
-  background: var(--bg-tertiary) !important;
-  color: var(--text-primary) !important;
+.ant-table-thead>tr>th {
+  background: var(--bg-secondary) !important;
+  /* Distinct header */
+  color: var(--text-secondary) !important;
   font-weight: 600 !important;
   border-bottom: 1px solid var(--border-color) !important;
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 0.5px;
 }
 
-.ant-table-tbody > tr > td {
+.ant-table-tbody>tr>td {
   background: var(--bg-card) !important;
   color: var(--text-primary) !important;
   border-bottom: 1px solid var(--border-color) !important;
 }
 
-.ant-table-tbody > tr:hover > td {
+.ant-table-tbody>tr:hover>td {
   background: var(--bg-elevated) !important;
 }
 
-.ant-table-row-selected > td {
-  background: rgba(227, 24, 55, 0.1) !important;
+.ant-table-row-selected>td {
+  background: rgba(227, 24, 55, 0.05) !important;
 }
 
 /* Buttons */
 .ant-btn {
-  border-radius: var(--border-radius-sm) !important;
+  border-radius: 4px !important;
+  /* Slightly more square */
   font-weight: 500 !important;
   transition: all var(--transition-fast) !important;
+  box-shadow: none !important;
 }
 
 .ant-btn-primary {
@@ -206,8 +237,6 @@ a:hover {
 .ant-btn-primary:not(:disabled):hover {
   background: var(--color-primary-hover) !important;
   border-color: var(--color-primary-hover) !important;
-  transform: translateY(-1px) !important;
-  box-shadow: var(--shadow-glow) !important;
 }
 
 .ant-btn-primary:not(:disabled):active {
@@ -216,14 +245,14 @@ a:hover {
 }
 
 .ant-btn-default {
-  background: var(--bg-tertiary) !important;
+  background: transparent !important;
   border-color: var(--border-color) !important;
   color: var(--text-primary) !important;
 }
 
 .ant-btn-default:not(:disabled):hover {
-  border-color: var(--color-primary) !important;
-  color: var(--color-primary) !important;
+  border-color: var(--text-secondary) !important;
+  color: var(--text-primary) !important;
 }
 
 .ant-btn-text {
@@ -259,7 +288,7 @@ a:hover {
   background: var(--bg-tertiary) !important;
   border-color: var(--border-color) !important;
   color: var(--text-primary) !important;
-  border-radius: var(--border-radius-sm) !important;
+  border-radius: 4px !important;
 }
 
 /* Input.Search - quitar borde blanco del grupo */
@@ -292,7 +321,7 @@ a:hover {
 .ant-input-affix-wrapper-focused,
 .ant-select-focused .ant-select-selector {
   border-color: var(--color-primary) !important;
-  box-shadow: 0 0 0 2px rgba(227, 24, 55, 0.2) !important;
+  box-shadow: 0 0 0 2px rgba(227, 24, 55, 0.15) !important;
 }
 
 /* Select dropdown */
@@ -351,12 +380,12 @@ a:hover {
 }
 
 .ant-layout-sider {
-  background: linear-gradient(180deg, #0D0D0F 0%, #111113 100%) !important;
+  background: var(--bg-secondary) !important;
   border-right: 1px solid var(--border-color) !important;
 }
 
 .ant-layout-header {
-  background: var(--bg-secondary) !important;
+  background: var(--bg-primary) !important;
   border-bottom: 1px solid var(--border-color) !important;
 }
 
@@ -371,18 +400,21 @@ a:hover {
 
 .ant-menu-dark .ant-menu-item {
   color: var(--text-secondary) !important;
-  border-radius: var(--border-radius-sm) !important;
+  border-radius: 4px !important;
   margin: 4px 8px !important;
 }
 
 .ant-menu-dark .ant-menu-item:hover {
   color: var(--text-primary) !important;
-  background: rgba(255, 255, 255, 0.05) !important;
+  background: var(--bg-elevated) !important;
 }
 
 .ant-menu-dark .ant-menu-item-selected {
-  background: linear-gradient(135deg, var(--color-primary) 0%, #c41230 100%) !important;
-  color: white !important;
+  background: rgba(227, 24, 55, 0.1) !important;
+  /* Subtle selection */
+  color: var(--color-primary) !important;
+  border-left: 2px solid var(--color-primary);
+  /* Professional indicator */
 }
 
 /* Dropdown */
@@ -511,7 +543,7 @@ a:hover {
 }
 
 /* Form */
-.ant-form-item-label > label {
+.ant-form-item-label>label {
   color: var(--text-primary) !important;
 }
 
@@ -559,6 +591,7 @@ a:hover {
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -570,6 +603,7 @@ a:hover {
     opacity: 0;
     transform: translateX(-20px);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -577,18 +611,24 @@ a:hover {
 }
 
 @keyframes pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.5;
   }
 }
 
 @keyframes glow {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 0 5px var(--color-primary);
   }
+
   50% {
     box-shadow: 0 0 20px var(--color-primary), 0 0 30px var(--color-primary);
   }
@@ -636,12 +676,13 @@ a:hover {
 
 /* Print styles */
 @media print {
+
   .ant-layout-sider,
   .ant-layout-header,
   .ant-btn {
     display: none !important;
   }
-  
+
   .ant-layout-content {
     margin: 0 !important;
     padding: 20px !important;
@@ -655,7 +696,7 @@ a:hover {
   .ant-layout-sider {
     display: none !important;
   }
-  
+
   .ant-layout-content {
     margin-left: 0 !important;
   }
@@ -665,4 +706,54 @@ a:hover {
 ::selection {
   background: rgba(227, 24, 55, 0.3);
   color: inherit;
+}
+
+/* ============================================
+   UTILITY CLASSES - SOLID & CLEAN
+   ============================================ */
+
+.text-gradient {
+  background: linear-gradient(135deg, #fff 0%, #ccc 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-red {
+  background: linear-gradient(135deg, #FF4D4D 0%, #E31837 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.hover-lift {
+  transition: transform var(--transition-fast), border-color var(--transition-fast);
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-color-light);
+}
+
+/* Clean Panels */
+.content-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Legacy helpers mapping to new clean style */
+.glass-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+}
+
+.hover-glow {
+  transition: var(--transition-normal);
+}
+
+.hover-glow:hover {
+  box-shadow: none;
+  border-color: var(--border-color-light);
+  transform: translateY(-1px);
 }

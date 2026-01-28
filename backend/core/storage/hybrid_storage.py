@@ -52,8 +52,13 @@ class HybridStorageService:
             logger.info("Hybrid storage initialized: local only (GCS not available)")
     
     def _init_gcs(self):
-        """Intenta inicializar el cliente de GCS."""
+        """Intenta inicializar el cliente de GCS (solo si USE_GCS=true)."""
         try:
+            # Verificar si GCS está habilitado
+            if not settings.USE_GCS:
+                logger.info("GCS disabled by configuration (USE_GCS=false). Using local storage only.")
+                return
+            
             # Verificar configuración mínima
             if not settings.GCP_PROJECT_ID or not settings.GCS_BUCKET:
                 logger.warning("GCS not configured: missing GCP_PROJECT_ID or GCS_BUCKET")
@@ -180,22 +185,35 @@ class HybridStorageService:
         Raises:
             RuntimeError: Si GCS no está disponible.
         """
-        if not self._gcs_available or not self._gcs_client:
-             raise RuntimeError("GCS storage is not available and local storage is disabled.")
-
-        try:
-            uri = self._gcs_client.upload_file(
+        # Intentar GCS primero si está disponible
+        if self._gcs_available and self._gcs_client:
+            try:
+                uri = self._gcs_client.upload_file(
+                    file_content=file_content,
+                    file_name=file_name,
+                    content_type=content_type,
+                    folder=folder,
+                )
+                logger.info(f"File uploaded to GCS: {uri}")
+                return uri
+                
+            except Exception as e:
+                logger.warning(f"GCS upload failed: {e}. Falling back to local storage.")
+                # Continuar con local storage (fallback automático)
+        
+        # Usar local storage (fallback o modo local-only)
+        if self._local_storage:
+            uri = self._local_storage.upload_file(
                 file_content=file_content,
                 file_name=file_name,
                 content_type=content_type,
                 folder=folder,
             )
-            logger.info(f"File uploaded to GCS: {uri}")
+            logger.info(f"File uploaded to local storage: {uri}")
             return uri
-            
-        except Exception as e:
-            logger.error(f"GCS upload failed: {e}")
-            raise RuntimeError(f"Failed to upload file to GCS: {e}")
+        
+        # No debería llegar aquí nunca
+        raise RuntimeError("No storage backend available (neither GCS nor local)")
     
     def download_file(self, uri: str) -> bytes:
         """

@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { Table, Button, Card, Typography, Modal, Form, Input, DatePicker, InputNumber, message, Space, Popconfirm } from 'antd';
-import { PlusOutlined, DeleteOutlined, ProjectOutlined, EditOutlined } from '@ant-design/icons';
+import { Table, Button, Typography, Modal, Form, Input, DatePicker, InputNumber, message, Space, Popconfirm, Layout } from 'antd';
+import { PlusOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import AppLayout from '../components/layout/AppLayout';
 import { experiencesApi } from '../lib/api';
 import type { Experience } from '../types';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
+const { Content } = Layout;
 const { TextArea } = Input;
 
 const ExperiencesPage: React.FC = () => {
@@ -128,68 +129,100 @@ const ExperiencesPage: React.FC = () => {
 
     return (
         <AppLayout>
-            <div style={{ padding: '24px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24 }}>
-                    <Title level={2}><ProjectOutlined /> Experiencias y Casos de Éxito</Title>
-                    <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)} size="large" style={{ background: '#E31837' }}>
-                        Nueva Experiencia
-                    </Button>
+            <Content style={{ padding: '0', minHeight: '100vh', background: 'var(--bg-primary)' }}>
+                <div style={{ padding: '32px' }}>
+                    {/* Header */}
+                    <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        marginBottom: 32,
+                    }}>
+                        <div>
+                            <Title level={2} style={{ margin: 0, color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>
+                                Experiencias y Casos de Éxito
+                            </Title>
+                            <Text style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
+                                Registro histórico de proyectos y casos relevantes.
+                            </Text>
+                        </div>
+                        <Button
+                            type="primary"
+                            icon={<PlusOutlined />}
+                            onClick={() => setIsModalOpen(true)}
+                            size="large"
+                        >
+                            Nueva Experiencia
+                        </Button>
+                    </div>
+
+                    {/* Table */}
+                    <div className="content-panel" style={{ borderRadius: 8, overflow: 'hidden' }}>
+                        <Table
+                            columns={columns}
+                            dataSource={experiences}
+                            rowKey="id"
+                            loading={isLoading}
+                            pagination={{
+                                pageSize: 10,
+                                showTotal: (total) => <span style={{ color: 'var(--text-secondary)' }}>{total} Experiencias</span>,
+                            }}
+                            scroll={{ x: 1000 }}
+                            size="middle"
+                            rowClassName="hover-lift"
+                        />
+                    </div>
                 </div>
 
-                <Card bordered={false} style={{ borderRadius: 12, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-                    <Table
-                        columns={columns}
-                        dataSource={experiences}
-                        rowKey="id"
-                        loading={isLoading}
-                    />
-                </Card>
-
                 <Modal
-                    title={editingId ? "Editar Experiencia" : "Nueva Experiencia"}
+                    title={null}
                     open={isModalOpen}
                     onCancel={handleCloseModal}
                     footer={null}
+                    width={600}
+                    closeIcon={<span style={{ color: 'var(--text-secondary)' }}>×</span>}
+                    styles={{ body: { padding: 0 } }}
                 >
-                    <Form
-                        form={form}
-                        layout="vertical"
-                        onFinish={handleSave}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                                e.preventDefault();
-                            }
-                        }}
-                    >
-                        <Form.Item name="propietario_servicio" label="Cliente / Propietario" rules={[{ required: true }]}>
-                            <Input placeholder="Ej: Banco Estado" />
-                        </Form.Item>
-                        <Form.Item name="descripcion_servicio" label="Descripción del Servicio" rules={[{ required: true }]}>
-                            <TextArea rows={3} placeholder="Ej: Implementación de sistema..." />
-                        </Form.Item>
-                        <Form.Item name="ubicacion" label="Ubicación" rules={[{ required: true }]}>
-                            <Input placeholder="Ej: Santiago, Chile" />
-                        </Form.Item>
-                        <div style={{ display: 'flex', gap: 16 }}>
-                            <Form.Item name="fecha_inicio" label="Fecha Inicio" rules={[{ required: true }]} style={{ flex: 1 }}>
-                                <DatePicker style={{ width: '100%' }} />
+                    <div style={{ padding: 32, background: 'var(--bg-card)', borderRadius: 8 }}>
+                        <Title level={3} style={{ marginBottom: 24, textAlign: 'center', color: 'var(--text-primary)' }}>
+                            {editingId ? "Editar Experiencia" : "Nueva Experiencia"}
+                        </Title>
+
+                        <Form
+                            form={form}
+                            layout="vertical"
+                            onFinish={handleSave}
+                        >
+                            <Form.Item name="propietario_servicio" label={<span style={{ color: 'var(--text-secondary)' }}>Cliente / Propietario</span>} rules={[{ required: true }]}>
+                                <Input placeholder="Ej: Banco Estado" style={{ background: 'var(--bg-tertiary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }} />
                             </Form.Item>
-                            <Form.Item name="fecha_fin" label="Fecha Fin" style={{ flex: 1 }}>
-                                <DatePicker style={{ width: '100%' }} />
+                            <Form.Item name="descripcion_servicio" label={<span style={{ color: 'var(--text-secondary)' }}>Descripción del Servicio</span>} rules={[{ required: true }]}>
+                                <TextArea rows={3} placeholder="Ej: Implementación de sistema..." style={{ background: 'var(--bg-tertiary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }} />
                             </Form.Item>
-                        </div>
-                        <Form.Item name="monto_final" label="Monto Final (USD/CLP)">
-                            <InputNumber style={{ width: '100%' }} />
-                        </Form.Item>
-                        <div style={{ textAlign: 'right', marginTop: 16 }}>
-                            <Button onClick={handleCloseModal} style={{ marginRight: 8 }} htmlType="button">Cancelar</Button>
-                            <Button type="primary" htmlType="submit" loading={createMutation.isPending || updateMutation.isPending} style={{ background: '#E31837' }}>
-                                Guardar
-                            </Button>
-                        </div>
-                    </Form>
+                            <Form.Item name="ubicacion" label={<span style={{ color: 'var(--text-secondary)' }}>Ubicación</span>} rules={[{ required: true }]}>
+                                <Input placeholder="Ej: Santiago, Chile" style={{ background: 'var(--bg-tertiary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }} />
+                            </Form.Item>
+                            <div style={{ display: 'flex', gap: 16 }}>
+                                <Form.Item name="fecha_inicio" label={<span style={{ color: 'var(--text-secondary)' }}>Fecha Inicio</span>} rules={[{ required: true }]} style={{ flex: 1 }}>
+                                    <DatePicker style={{ width: '100%', background: 'var(--bg-tertiary)', borderColor: 'var(--border-color)' }} />
+                                </Form.Item>
+                                <Form.Item name="fecha_fin" label={<span style={{ color: 'var(--text-secondary)' }}>Fecha Fin</span>} style={{ flex: 1 }}>
+                                    <DatePicker style={{ width: '100%', background: 'var(--bg-tertiary)', borderColor: 'var(--border-color)' }} />
+                                </Form.Item>
+                            </div>
+                            <Form.Item name="monto_final" label={<span style={{ color: 'var(--text-secondary)' }}>Monto Final (USD/CLP)</span>}>
+                                <InputNumber style={{ width: '100%', background: 'var(--bg-tertiary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }} />
+                            </Form.Item>
+                            <div style={{ textAlign: 'right', marginTop: 32, display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+                                <Button onClick={handleCloseModal} style={{ height: 40 }}>Cancelar</Button>
+                                <Button type="primary" htmlType="submit" loading={createMutation.isPending || updateMutation.isPending} style={{ height: 40, padding: '0 24px' }}>
+                                    Guardar
+                                </Button>
+                            </div>
+                        </Form>
+                    </div>
                 </Modal>
-            </div>
+            </Content>
         </AppLayout>
     );
 };

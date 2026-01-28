@@ -2,10 +2,10 @@
  * Tarjetas de estadísticas del dashboard
  */
 import React from 'react';
-import { Row, Col, Card, Statistic, Progress } from 'antd';
-import { 
-  FileTextOutlined, CheckCircleOutlined, 
-  CloseCircleOutlined, ClockCircleOutlined 
+import { Row, Col, Statistic, Progress } from 'antd';
+import {
+  FileTextOutlined, CheckCircleOutlined,
+  CloseCircleOutlined, ClockCircleOutlined
 } from '@ant-design/icons';
 import type { DashboardStats } from '../../types';
 
@@ -15,63 +15,60 @@ interface StatsCardsProps {
 
 const StatsCards: React.FC<StatsCardsProps> = ({ stats }) => {
   return (
-    <Row gutter={16}>
+    <Row gutter={[16, 16]}>
       <Col span={6}>
-        <Card>
+        <div className="content-panel hover-lift" style={{ padding: '20px 24px', borderRadius: 8 }}>
           <Statistic
-            title="Total RFPs"
+            title={<span style={{ color: 'var(--text-secondary)', fontSize: 13 }}>Total RFPs</span>}
             value={stats.total_rfps}
-            prefix={<FileTextOutlined />}
-            valueStyle={{ color: '#1890ff' }}
+            prefix={<FileTextOutlined style={{ fontSize: 20, marginRight: 12, color: 'var(--color-info)' }} />}
+            valueStyle={{ color: 'var(--text-primary)', fontSize: 24, fontWeight: 600 }}
           />
-        </Card>
+        </div>
       </Col>
       <Col span={6}>
-        <Card>
+        <div className="content-panel hover-lift" style={{ padding: '20px 24px', borderRadius: 8 }}>
           <Statistic
-            title="GO"
+            title={<span style={{ color: 'var(--text-secondary)', fontSize: 13 }}>GO</span>}
             value={stats.go_count}
-            prefix={<CheckCircleOutlined />}
-            valueStyle={{ color: '#52c41a' }}
+            prefix={<CheckCircleOutlined style={{ fontSize: 20, marginRight: 12, color: 'var(--color-success)' }} />}
+            valueStyle={{ color: 'var(--text-primary)', fontSize: 24, fontWeight: 600 }}
           />
-        </Card>
+        </div>
       </Col>
       <Col span={6}>
-        <Card>
+        <div className="content-panel hover-lift" style={{ padding: '20px 24px', borderRadius: 8 }}>
           <Statistic
-            title="NO GO"
+            title={<span style={{ color: 'var(--text-secondary)', fontSize: 13 }}>NO GO</span>}
             value={stats.no_go_count}
-            prefix={<CloseCircleOutlined />}
-            valueStyle={{ color: '#ff4d4f' }}
+            prefix={<CloseCircleOutlined style={{ fontSize: 20, marginRight: 12, color: 'var(--color-error)' }} />}
+            valueStyle={{ color: 'var(--text-primary)', fontSize: 24, fontWeight: 600 }}
           />
-        </Card>
+        </div>
       </Col>
       <Col span={6}>
-        <Card>
+        <div className="content-panel hover-lift" style={{ padding: '20px 24px', borderRadius: 8 }}>
           <Statistic
-            title="Pendientes"
+            title={<span style={{ color: 'var(--text-secondary)', fontSize: 13 }}>Pendientes</span>}
             value={stats.pending_count + stats.analyzing_count}
-            prefix={<ClockCircleOutlined />}
-            valueStyle={{ color: '#faad14' }}
+            prefix={<ClockCircleOutlined style={{ fontSize: 20, marginRight: 12, color: 'var(--color-warning)' }} />}
+            valueStyle={{ color: 'var(--text-primary)', fontSize: 24, fontWeight: 600 }}
           />
-        </Card>
+        </div>
       </Col>
-      
+
       {/* GO Rate */}
-      <Col span={24} style={{ marginTop: 16 }}>
-        <Card size="small">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <span>Tasa de GO:</span>
-            <Progress 
-              percent={stats.go_rate} 
-              style={{ flex: 1, marginBottom: 0 }}
-              strokeColor={{
-                '0%': '#52c41a',
-                '100%': '#87d068',
-              }}
-            />
-          </div>
-        </Card>
+      <Col span={24}>
+        <div className="content-panel" style={{ padding: '16px 24px', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 24 }}>
+          <span style={{ color: 'var(--text-secondary)', fontSize: 13, minWidth: 100 }}>Tasa de GO:</span>
+          <Progress
+            percent={parseFloat(stats.go_rate.toFixed(1))}
+            strokeColor="var(--color-success)"
+            trailColor="var(--bg-tertiary)"
+            strokeWidth={8}
+            style={{ flex: 1, marginBottom: 0 }}
+          />
+        </div>
       </Col>
     </Row>
   );

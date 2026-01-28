@@ -55,7 +55,8 @@ services:
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3-pro-preview}
 
       # MCP Talent Search
-      MCP_TALENT_URL: http://mcp:8080
+      MCP_TALENT_URL_DEVELOPMENT: ${MCP_TALENT_URL_DEVELOPMENT:-http://mcp:8080}
+      MCP_TALENT_URL_PRODUCTION: ${MCP_TALENT_URL_PRODUCTION:-}
 
       # JWT
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-super-secret-key-change-in-production}

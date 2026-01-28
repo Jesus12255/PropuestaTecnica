@@ -2,8 +2,14 @@
  * Tabla de RFPs
  */
 import React from 'react';
-import { Table, Tag, Button, Space, Tooltip } from 'antd';
-import { EyeOutlined, CalendarOutlined } from '@ant-design/icons';
+import { Table, Tag, Button, Space, Tooltip, Popover } from 'antd';
+import {
+  EyeOutlined,
+  CalendarOutlined,
+  QuestionCircleOutlined,
+  DownloadOutlined,
+  FileTextOutlined,
+} from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
 import type { RFPSummary, RFPStatus, Recommendation } from '../../types';
@@ -31,6 +37,100 @@ const recommendationConfig: Record<Recommendation, { color: string; label: strin
   strong_no_go: { color: 'red', label: 'No Participar' },
 };
 
+// Helper component: Status Help Popover
+const StatusHelpPopover: React.FC = () => {
+  const content = (
+    <div style={{ maxWidth: 350 }}>
+      <div style={{ marginBottom: 8 }}>
+        <Tag color="default">Pendiente</Tag>
+        <div style={{ marginTop: 4, fontSize: 12 }}>
+          RFP recién cargado, esperando análisis
+        </div>
+      </div>
+      <div style={{ marginBottom: 8 }}>
+        <Tag color="processing">Analizando</Tag>
+        <div style={{ marginTop: 4, fontSize: 12 }}>
+          IA procesando el documento
+        </div>
+      </div>
+      <div style={{ marginBottom: 8 }}>
+        <Tag color="warning">Analizado</Tag>
+        <div style={{ marginTop: 4, fontSize: 12 }}>
+          Análisis completado, esperando decisión
+        </div>
+      </div>
+      <div style={{ marginBottom: 8 }}>
+        <Tag color="success">GO</Tag>
+        <div style={{ marginTop: 4, fontSize: 12 }}>
+          Decisión tomada - Participar en la licitación
+        </div>
+      </div>
+      <div style={{ marginBottom: 8 }}>
+        <Tag color="error">NO GO</Tag>
+        <div style={{ marginTop: 4, fontSize: 12 }}>
+          Decisión tomada - No participar
+        </div>
+      </div>
+      <div>
+        <Tag color="error">Error</Tag>
+        <div style={{ marginTop: 4, fontSize: 12 }}>
+          Problema durante el análisis
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <Popover content={content} title="Estados del RFP" trigger="hover">
+      <QuestionCircleOutlined style={{ marginLeft: 4, color: '#888', cursor: 'help' }} />
+    </Popover>
+  );
+};
+
+// Helper component: Recommendation Help Popover
+const RecommendationHelpPopover: React.FC = () => {
+  const content = (
+    <div style={{ maxWidth: 380 }}>
+      <div style={{ marginBottom: 8 }}>
+        <Tag color="green">Muy Recomendable</Tag>
+        <div style={{ marginTop: 4, fontSize: 12 }}>
+          Alta probabilidad de éxito, equipo capacitado y alineado con la estrategia
+        </div>
+      </div>
+      <div style={{ marginBottom: 8 }}>
+        <Tag color="lime">Recomendable</Tag>
+        <div style={{ marginTop: 4, fontSize: 12 }}>
+          Cumple requisitos principales, riesgo moderado y manejable
+        </div>
+      </div>
+      <div style={{ marginBottom: 8 }}>
+        <Tag color="gold">Condicional</Tag>
+        <div style={{ marginTop: 4, fontSize: 12 }}>
+          Requiere evaluación adicional, recursos específicos o análisis de viabilidad
+        </div>
+      </div>
+      <div style={{ marginBottom: 8 }}>
+        <Tag color="orange">No Recomendable</Tag>
+        <div style={{ marginTop: 4, fontSize: 12 }}>
+          Riesgos significativos identificados, presupuesto insuficiente o alcance poco claro
+        </div>
+      </div>
+      <div>
+        <Tag color="red">No Participar</Tag>
+        <div style={{ marginTop: 4, fontSize: 12 }}>
+          No cumple requisitos mínimos, fuera de alcance o incompatible con capacidades
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <Popover content={content} title="Niveles de Recomendación" trigger="hover">
+      <QuestionCircleOutlined style={{ marginLeft: 4, color: '#888', cursor: 'help' }} />
+    </Popover>
+  );
+};
+
 const RFPTable: React.FC<RFPTableProps> = ({ data, pagination }) => {
   const navigate = useNavigate();
 
@@ -44,6 +144,13 @@ const RFPTable: React.FC<RFPTableProps> = ({ data, pagination }) => {
           {text || record.file_name}
         </Button>
       ),
+    },
+    {
+      title: 'Nombre del Proyecto',
+      dataIndex: 'title',
+      key: 'title',
+      width: 200,
+      render: (text) => text || '-',
     },
     {
       title: 'País',
@@ -85,10 +192,15 @@ const RFPTable: React.FC<RFPTableProps> = ({ data, pagination }) => {
       ) : '-',
     },
     {
-      title: 'Recomendación',
+      title: (
+        <span>
+          Recomendación
+          <RecommendationHelpPopover />
+        </span>
+      ),
       dataIndex: 'recommendation',
       key: 'recommendation',
-      width: 140,
+      width: 160,
       render: (rec: Recommendation | null) => rec ? (
         <Tag color={recommendationConfig[rec].color}>
           {recommendationConfig[rec].label}
@@ -96,10 +208,15 @@ const RFPTable: React.FC<RFPTableProps> = ({ data, pagination }) => {
       ) : '-',
     },
     {
-      title: 'Estado',
+      title: (
+        <span>
+          Estado
+          <StatusHelpPopover />
+        </span>
+      ),
       dataIndex: 'status',
       key: 'status',
-      width: 120,
+      width: 140,
       render: (status: RFPStatus) => (
         <Tag color={statusConfig[status].color}>
           {statusConfig[status].label}
@@ -116,27 +233,72 @@ const RFPTable: React.FC<RFPTableProps> = ({ data, pagination }) => {
     {
       title: 'Acciones',
       key: 'actions',
-      width: 80,
+      width: 120,
       fixed: 'right',
       render: (_, record) => (
-        <Button
-          type="text"
-          icon={<EyeOutlined />}
-          onClick={() => navigate(`/rfp/${record.id}`)}
-        />
+        <Space size="small">
+          <Tooltip title="Ver detalles">
+            <Button
+              type="text"
+              size="small"
+              icon={<EyeOutlined />}
+              onClick={() => navigate(`/rfp/${record.id}`)}
+            />
+          </Tooltip>
+          {(record.status === 'analyzed' || record.status === 'go' || record.status === 'no_go') && (
+            <Tooltip title="Ver análisis">
+              <Button
+                type="text"
+                size="small"
+                icon={<FileTextOutlined />}
+                onClick={() => navigate(`/rfp/${record.id}`)}
+              />
+            </Tooltip>
+          )}
+          <Tooltip title="Descargar RFP">
+            <Button
+              type="text"
+              size="small"
+              icon={<DownloadOutlined />}
+              onClick={() => {
+                // TODO: Implement download functionality
+                console.log('Download RFP:', record.id);
+              }}
+            />
+          </Tooltip>
+        </Space>
       ),
     },
   ];
 
   return (
-    <Table
-      columns={columns}
-      dataSource={data}
-      rowKey="id"
-      pagination={pagination}
-      scroll={{ x: 1200 }}
-      size="middle"
-    />
+    <div className="content-panel" style={{ borderRadius: 8, overflow: 'hidden', padding: 0 }}>
+      {/* Clean Header */}
+      <div style={{
+        padding: '16px 24px',
+        borderBottom: '1px solid var(--border-color)',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        background: 'var(--bg-secondary)'
+      }}>
+        <h3 style={{ margin: 0, color: 'var(--text-primary)', fontSize: 15, fontWeight: 600 }}>
+          Listado de Propuestas
+        </h3>
+        <Space size="small">
+          <Button type="text" size="small" icon={<DownloadOutlined />} />
+        </Space>
+      </div>
+      <Table
+        columns={columns}
+        dataSource={data}
+        rowKey="id"
+        pagination={pagination}
+        scroll={{ x: 1400 }}
+        size="middle"
+        rowClassName="hover-lift"
+      />
+    </div>
   );
 };
 

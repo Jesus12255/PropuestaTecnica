@@ -1,17 +1,19 @@
-"""
-Endpoints para la generación de propuestas.
-"""
+from core.services.storage_service import get_folder_children
+from core.services.storage_service import create_folder
+from core.services.storage_service import create_file
+from core.services.storage_service import get_user_folder
+import uuid
+from utils.constantes import Constantes
+from core.storage import get_storage_service
 import logging
 from datetime import datetime
 from uuid import UUID
 import unicodedata
 import re
-
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from core.database import get_db
 from core.dependencies import get_current_user
 from core.services.proposal_generator import get_proposal_generator
@@ -101,6 +103,10 @@ async def generate_proposal(
         # 2. Generar el DOCX
         docx_stream = generator.generate_docx(context_data)
         
+        # Capturar bytes para guardar copia
+        file_content = docx_stream.getvalue()
+        docx_stream.seek(0) # Resetear puntero para la descarga posterior
+        
         # Sanitize filename (remove accents, etc)
         client_clean = rfp.client_name or 'TIVIT'
         # Normalize to NFKD to separate accents
@@ -108,7 +114,10 @@ async def generate_proposal(
         # Replace remaining non-safe chars
         client_clean = re.sub(r'[^\w\-_.]', '_', client_clean)
         
-        filename = f"Propuesta_{client_clean}_{datetime.now().strftime('%Y%m%d')}.docx"
+        filename = f"Propuesta_{client_clean}_{datetime.now().strftime('%Y%m%d')}_{uuid.uuid4()}.docx"
+        
+        # Guardar copia en el storage
+        await _guardar_propuesta(rfp, file_content, filename, user, db)
         
         return StreamingResponse(
             docx_stream,
@@ -119,3 +128,51 @@ async def generate_proposal(
     except Exception as e:
         logger.error(f"Error creating proposal for RFP {rfp.id}: {e}")
         raise HTTPException(status_code=500, detail=f"Error generando la propuesta: {e}")
+
+
+async def _guardar_propuesta(rfp: RFPSubmission, file_content: bytes, filename: str, user: User, db: AsyncSession):
+    try:
+        storage = get_storage_service()
+        folder = Constantes.Storage.PROPOSALS
+        
+        uri = storage.upload_file(
+            file_content=file_content,
+            file_name=filename,
+            content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            folder=folder
+        )
+
+        carpeta_go = await get_user_folder(db, user.id, Constantes.Storage.GO)
+        if not carpeta_go:
+             raise HTTPException(status_code=404, detail="Carpeta GO no encontrada")
+
+        carpeta_tvt = await get_user_folder(db, user.id, rfp.tvt, parent_id=carpeta_go.carpeta_id)
+        if not carpeta_tvt:
+            raise HTTPException(status_code=404, detail=f"Carpeta con TVT {rfp.tvt} no encontrada dentro de GO")
+
+        carpeta_propuestas = await get_user_folder(db, user.id, Constantes.Storage.PROPOSALS, parent_id=carpeta_tvt.carpeta_id)
+        
+        if not carpeta_propuestas:
+            carpeta_propuestas = await create_folder(
+                db=db,
+                name=Constantes.Storage.PROPOSALS,
+                parent_id=carpeta_tvt.carpeta_id
+            )
+        
+        versiones_propuesta = await get_folder_children(db, carpeta_propuestas.carpeta_id)
+
+        carpeta_version_propuesta = await create_folder(
+            db=db,
+            name=Constantes.Storage.VERSION + Constantes.UNDERSCORE + str(len(versiones_propuesta) + 1),
+            parent_id=carpeta_propuestas.carpeta_id
+        )
+
+        await create_file(
+            db=db,
+            name=filename, 
+            carpeta_id=carpeta_version_propuesta.carpeta_id, 
+            url=uri
+        )
+    except Exception as e:
+        logger.error(f"Error guardando respaldo de propuesta en storage: {e}")
+        return None

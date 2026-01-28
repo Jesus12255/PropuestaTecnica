@@ -21,6 +21,9 @@ import type {
   Certification,
   CertificationUploadResponse,
   Experience,
+  MCPChatResponse,
+  RFPChatResponse,
+  ChatMessage,
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
@@ -139,9 +142,9 @@ export const rfpApi = {
     return data;
   },
 
-  upload: async (file: File): Promise<UploadResponse> => {
+  upload: async (files: File[]): Promise<UploadResponse> => {
     const formData = new FormData();
-    formData.append('file', file);
+    files.forEach(file => formData.append('files', file));
 
     const { data } = await api.post<UploadResponse>('/rfp/upload', formData);
     return data;
@@ -190,6 +193,25 @@ export const rfpApi = {
       cost_estimation: CostEstimation | null;
       suggested_team: SuggestedTeam | null;
     }>(`/rfp/${id}/team-estimation`);
+    return data;
+  },
+
+  /**
+   * Chat contextual con un RFP específico
+   * @param id - ID del RFP
+   * @param message - Pregunta del usuario
+   * @param history - Historial de conversación (últimos 20 mensajes)
+   */
+  chatWithRfp: async (id: string, message: string, history: ChatMessage[] = []): Promise<RFPChatResponse> => {
+    // Convertir historial al formato del backend
+    const formattedHistory = history.slice(-20).map(msg => ({
+      role: msg.role,
+      content: msg.content,
+    }));
+    const { data } = await api.post<RFPChatResponse>(`/rfp/${id}/chat`, {
+      message,
+      history: formattedHistory,
+    });
     return data;
   },
 };
@@ -297,6 +319,64 @@ export const chaptersApi = {
 
   getRecommendations: async (rfpId: string) => {
     const { data } = await api.post<{ chapter_id: string; score: number; reason: string }[]>('/chapters/recommendations', { rfp_id: rfpId });
+    return data;
+  },
+};
+
+// ============ MCP TALENT CHAT ============
+
+const MCP_BASE_URL = import.meta.env.VITE_MCP_URL || 'http://localhost:8080';
+
+export const mcpApi = {
+  /**
+   * Chat con MCP Talent Search (modo general)
+   * @param mensaje - Consulta en lenguaje natural
+   * @param pais_default - País por defecto si no se especifica en la consulta
+   */
+  chat: async (mensaje: string, pais_default?: string): Promise<MCPChatResponse> => {
+    const response = await fetch(`${MCP_BASE_URL}/chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ mensaje, pais_default }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`MCP chat error: ${response.statusText}`);
+    }
+
+    return response.json();
+  },
+
+  /**
+   * Verifica si MCP está disponible
+   */
+  healthCheck: async (): Promise<boolean> => {
+    try {
+      const response = await fetch(`${MCP_BASE_URL}/health`);
+      return response.ok;
+    } catch {
+      return false;
+    }
+  },
+};
+
+// ============ SYSTEM CHAT ============
+
+export interface SystemChatResponse {
+  response: string;
+  mode: string;
+}
+
+export const chatApi = {
+  /**
+   * Chat with system knowledge (all RFPs, guidance)
+   * @param message - User question
+   * @param history - Conversation history
+   */
+  system: async (message: string, history: { role: 'user' | 'assistant'; content: string }[] = []): Promise<SystemChatResponse> => {
+    const { data } = await api.post<SystemChatResponse>('/chat/system', { message, history });
     return data;
   },
 };

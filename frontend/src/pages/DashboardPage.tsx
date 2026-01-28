@@ -49,20 +49,25 @@ const DashboardPage: React.FC = () => {
 
   return (
     <AppLayout>
-      <Content style={{ padding: '24px', minHeight: '100vh' }}>
-        {/* Header */}
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
+      <Content style={{ padding: '0', minHeight: '100vh' }}>
+        {/* Header Content */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
           alignItems: 'center',
-          marginBottom: 24,
+          marginBottom: 32,
         }}>
-          <Title level={2} style={{ margin: 0 }}>
-            Dashboard
-          </Title>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <Title level={2} style={{ margin: 0, color: 'white', letterSpacing: '-0.5px' }}>
+              Dashboard
+            </Title>
+            <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: 14 }}>
+              Resumen de operaciones y licitaciones
+            </span>
+          </div>
           <Space>
-            <Button 
-              icon={<ReloadOutlined />} 
+            <Button
+              icon={<ReloadOutlined />}
               onClick={handleRefresh}
             >
               Actualizar
@@ -87,12 +92,15 @@ const DashboardPage: React.FC = () => {
         ) : null}
 
         {/* Filters */}
-        <div style={{ 
-          display: 'flex', 
-          gap: 16, 
-          marginBottom: 16,
+        <div className="content-panel" style={{
+          display: 'flex',
+          gap: 12,
+          marginBottom: 24,
           marginTop: 24,
           flexWrap: 'wrap',
+          padding: '16px 24px',
+          borderRadius: 8,
+          alignItems: 'center'
         }}>
           <Input.Search
             placeholder="Buscar por cliente o resumen..."
@@ -118,7 +126,7 @@ const DashboardPage: React.FC = () => {
             ]}
           />
           {(searchText || statusFilter) && (
-            <Button onClick={() => { setSearchText(''); setStatusFilter(undefined); }}>
+            <Button type="link" onClick={() => { setSearchText(''); setStatusFilter(undefined); }}>
               Limpiar filtros
             </Button>
           )}

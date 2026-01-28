@@ -218,91 +218,99 @@ const RFPListPage: React.FC<RFPListPageProps> = ({ filterStatus = 'all' }) => {
 
   return (
     <AppLayout>
-      <Content style={{ padding: '24px', minHeight: '100vh' }}>
-        {/* Header */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 24,
-        }}>
-          <Title level={2} style={{ margin: 0 }}>
-            {getTitle()}
-          </Title>
-          <Space>
-            <Button
-              icon={<ReloadOutlined />}
-              onClick={() => refetch()}
-            >
-              Actualizar
-            </Button>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => setUploadModalOpen(true)}
-            >
-              Subir RFP
-            </Button>
-          </Space>
-        </div>
+      <Content style={{ padding: '0', minHeight: '100vh', background: 'var(--bg-primary)' }}>
+        <div style={{ padding: '32px' }}>
+          {/* Header */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 32,
+          }}>
+            <Title level={2} style={{ margin: 0, color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>
+              {getTitle()}
+            </Title>
+            <Space>
+              <Button
+                icon={<ReloadOutlined />}
+                onClick={() => refetch()}
+              >
+                Actualizar
+              </Button>
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={() => setUploadModalOpen(true)}
+              >
+                Subir RFP
+              </Button>
+            </Space>
+          </div>
 
-        {/* Filters */}
-        <div style={{
-          display: 'flex',
-          gap: 16,
-          marginBottom: 16,
-          flexWrap: 'wrap',
-        }}>
-          <Input.Search
-            placeholder="Buscar por cliente o resumen..."
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            onSearch={(value) => setSearchText(value)}
-            style={{ width: 300 }}
-            allowClear
-            enterButton
-          />
-          <Select
-            placeholder="Categoría"
-            value={categoryFilter}
-            onChange={setCategoryFilter}
-            options={categoryOptions}
-            style={{ width: 180 }}
-            allowClear
-          />
-          {(searchText || categoryFilter) && (
-            <Button
-              onClick={() => {
-                setSearchText('');
-                setCategoryFilter(undefined);
+          {/* Filters */}
+          <div className="content-panel" style={{
+            display: 'flex',
+            gap: 12,
+            marginBottom: 24,
+            padding: '16px 24px',
+            borderRadius: 8,
+            alignItems: 'center',
+            flexWrap: 'wrap',
+          }}>
+            <Input.Search
+              placeholder="Buscar por cliente o resumen..."
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              onSearch={(value) => setSearchText(value)}
+              style={{ width: 300 }}
+              allowClear
+              enterButton
+            />
+            <Select
+              placeholder="Categoría"
+              value={categoryFilter}
+              onChange={setCategoryFilter}
+              options={categoryOptions}
+              style={{ width: 180 }}
+              allowClear
+            />
+            {(searchText || categoryFilter) && (
+              <Button
+                type="link"
+                onClick={() => {
+                  setSearchText('');
+                  setCategoryFilter(undefined);
+                }}
+              >
+                Limpiar filtros
+              </Button>
+            )}
+          </div>
+
+          {/* Table */}
+          <div className="content-panel" style={{ borderRadius: 8, overflow: 'hidden' }}>
+            <Table
+              columns={columns}
+              dataSource={rfpList?.items || []}
+              rowKey="id"
+              loading={isLoading}
+              pagination={{
+                current: page,
+                pageSize,
+                total: rfpList?.total || 0,
+                onChange: setPage,
+                showSizeChanger: false,
+                showTotal: (total) => <span style={{ color: 'var(--text-secondary)' }}>{total} Resultados</span>,
               }}
-            >
-              Limpiar filtros
-            </Button>
-          )}
-        </div>
-
-        {/* Table */}
-        <div style={{ background: '#fff', borderRadius: 8, overflow: 'hidden' }}>
-          <Table
-            columns={columns}
-            dataSource={rfpList?.items || []}
-            rowKey="id"
-            loading={isLoading}
-            pagination={{
-              current: page,
-              pageSize,
-              total: rfpList?.total || 0,
-              onChange: setPage,
-              showSizeChanger: false,
-              showTotal: (total) => `${total} RFPs`,
-            }}
-            scroll={{ x: 1200 }}
-            onRow={(record) => ({
-              onClick: () => navigate(`/rfp/${record.id}`),
-              style: { cursor: 'pointer' },
-            })}
-          />
+              scroll={{ x: 1200 }}
+              size="middle"
+              rowClassName="hover-lift"
+              onRow={(record) => ({
+                onClick: () => navigate(`/rfp/${record.id}`),
+                style: { cursor: 'pointer' },
+              })}
+            />
+          </div>
         </div>
 
         {/* Upload Modal */}

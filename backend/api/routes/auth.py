@@ -12,6 +12,7 @@ from core.services.auth import (
     create_user,
     get_user_by_email,
 )
+from core.services.storage_service import init_user_storage
 from models.user import User
 from models.schemas.auth_schemas import (
     UserCreate,
@@ -48,6 +49,10 @@ async def register(
         password=user_data.password,
         full_name=user_data.full_name,
     )
+    
+    # Inicializar almacenamiento del usuario
+    await init_user_storage(db, user)
+    
     await db.commit()
     await db.refresh(user)
     
